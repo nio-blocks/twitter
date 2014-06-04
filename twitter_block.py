@@ -127,7 +127,13 @@ class Twitter(Block):
         streaming, parses and queues results.
 
         """
-        self._connect_to_streaming()
+        if self._stream:
+            self._stream.close()
+            self._stream = None
+
+        # Try to connect, if we can't, don't start streaming
+        if not self._connect_to_streaming():
+            return
 
         while(1):
             try:
@@ -171,8 +177,11 @@ class Twitter(Block):
         fields (or all of them, if self.fields is empty).
 
         """
+        # If they did not specify which fields, just give them everything
+        if not self.fields or len(self.fields) == 0:
+            return data
+
         result = {}
-        self.fields = self.fields or list(data.keys())
         for f in self.fields:
             try:
                 result[f] = data[f]
@@ -182,9 +191,11 @@ class Twitter(Block):
         return result
 
     def _connect_to_streaming(self):
-        """ Initiates a connection to the Twitter Streaming API. Implements
-        Twitters recommended connection attempt backoff strategy as per
-        API documentation.
+        """ Attempt to connect to the Twitter Streaming API
+
+        Will return True if the connection is made. If a connection fails, this
+        method will return False and schedule reconnection attempts using the
+        backoff strategy as per Twitter's API documentation.
 
         """
         try:
@@ -194,8 +205,7 @@ class Twitter(Block):
                                          stream=True,
                                          auth=self._auth)
             status = self._stream.status_code
-            self._logger.debug("Twitter Streaming connection status: %d" %
-                               status)
+            self._logger.info("Streaming connection status: %d" % status)
 
             # reconnect attempt and backoff implementation for HTTP errors
             if status == 200:
@@ -203,6 +213,7 @@ class Twitter(Block):
                 self._rc_delay = None
 
                 if self._rc_job is not None:
+                    self._logger.debug("We were reconnecting, now we're done!")
                     self._rc_job.cancel()
 
                 self._monitor_job = Job(
@@ -210,14 +221,21 @@ class Twitter(Block):
                     self.rc_interval,
                     True
                 )
+
+                # Return true, we are connected!
+                return True
             elif status == 420:
                 self._logger.debug("Twitter is rate limiting your requests")
                 self._rc_delay = self._rc_delay or ONE_MIN / 2.0
             else:
+                self._logger.error("Status %s, going to need to reconnect"
+                                   % status)
                 self._rc_delay = self._rc_delay or FIVE_SEC / 2.0
 
-            if self._rc_delay is not None:
-                self._rc_delay *= 2
+            # We didn't connect, double the reconnect delay
+            self._rc_delay *= 2
+            self._logger.debug("Doubling reconnect delay from %s" %
+                               self._rc_delay)
 
         # handles backoff for TCP level errors
         except Exception as e:
@@ -227,8 +245,14 @@ class Twitter(Block):
 
         finally:
             if self._rc_delay is not None:
-                self._rc_job = Job(self._connect_to_streaming,
+                self._logger.debug("Trying to reconnect in %s seconds" %
+                                   self._rc_delay)
+                self._rc_job = Job(self._stream_tweets,
                                    self._rc_delay, False)
+
+        # If we are here, we didn't connect and we have a reconnect job
+        # scheduled
+        return False
 
     def _notify_tweets(self):
         self._tweet_lock.acquire()
@@ -244,8 +268,9 @@ class Twitter(Block):
         current_time = datetime.utcnow()
         time_since_data = current_time - self._last_rcv
         if time_since_data > self.rc_interval:
+            self._logger.warning("No data received, we might be disconnected")
             self._monitor_job.cancel()
-            self._connect_to_streaming()
+            self._stream_tweets()
 
     def _authorize(self):
         """ Prepare the OAuth handshake and verify.
