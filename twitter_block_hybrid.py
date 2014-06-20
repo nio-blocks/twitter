@@ -1,6 +1,10 @@
 import requests
 import json
+import oauth2 as oauth
+import http.client
 from datetime import timedelta, datetime
+from ssl import SSLError
+import time
 from requests_oauthlib import OAuth1
 from nio.common.block.base import Block
 from nio.common.discovery import Discoverable, DiscoverableType
@@ -12,7 +16,7 @@ from nio.metadata.properties.string import StringProperty
 from nio.modules.scheduler.imports import Job
 from nio.configuration.settings import Settings
 from nio.common.signal.base import Signal
-from nio.modules.threading.imports import Lock, spawn, Event
+from nio.modules.threading.imports import Lock, spawn, Event, sleep
 
 
 VERIFY_CREDS_URL = ('https://api.twitter.com/1.1/'
@@ -49,7 +53,7 @@ class Tweet(Signal):
 
 
 @Discoverable(DiscoverableType.block)
-class Twitter(Block):
+class TwitterHybrid(Block):
 
     """ A block for communicating with the Twitter Streaming API.
     Reads Tweets in real time, notifying other blocks via NIO's signal
@@ -114,14 +118,14 @@ class Twitter(Block):
         """
         pass
         #defaults = Settings.get_entry('twitter')
-        #self.creds.consumer_key = self.creds.consumer_key or \
-            #defaults['consumer_key']
-        #self.creds.app_secret = self.creds.app_secret or \
-            #defaults['app_secret']
-        #self.creds.oauth_token = self.creds.oauth_token or \
-            #defaults['oauth_token']
-        #self.creds.oauth_token_secret = self.creds.oauth_token_secret or \
-            #defaults['oauth_token_secret']
+        # self.creds.consumer_key = self.creds.consumer_key or \
+            # defaults['consumer_key']
+        # self.creds.app_secret = self.creds.app_secret or \
+            # defaults['app_secret']
+        # self.creds.oauth_token = self.creds.oauth_token or \
+            # defaults['oauth_token']
+        # self.creds.oauth_token_secret = self.creds.oauth_token_secret or \
+            # defaults['oauth_token_secret']
 
     def _stream_tweets(self):
         """ The main thread for the Twitter block. Reads from Twitter
@@ -138,15 +142,17 @@ class Twitter(Block):
 
         while(1):
             try:
-                for tweet in self._stream.iter_lines(chunk_size=1):
+                tweet = self._getNextTweet(self._stream)
+                if not tweet:
+                    continue
 
-                    # reset the last received timestamp
-                    self._last_rcv = datetime.utcnow()
+                # reset the last received timestamp
+                self._last_rcv = datetime.utcnow()
 
-                    if self._stop_event.is_set():
-                        break
-                    elif len(tweet) > 0:
-                        self._record_tweet(tweet)
+                if self._stop_event.is_set():
+                    break
+                elif len(tweet) > 0:
+                    self._record_tweet(tweet)
 
             except Exception as e:
 
@@ -155,21 +161,155 @@ class Twitter(Block):
                 self._logger.error("While streaming tweets: %s" % str(e))
                 continue
 
-            # otherwise break out of the whole thing
-            break
+    def _getNextTweet(self, resp):
+        receivedStr = ''
+        d = None
+
+        while d != '\r':
+            d, length = self._readFromStream(resp, 1)
+            if d is None or length == 0:
+                # if we claim to have read but it has length 0, it means we've
+                # been disconnected
+                resp.close()
+                return
+            else:
+                receivedStr += d
+
+        try:
+            length = int(receivedStr)
+        except Exception as e:
+            self._logger.debug(
+                "Error converting length from entry: {0}, details:"
+                "{1}".format(receivedStr, str(e)))
+            return
+
+        if length:
+            receivedStr, new_length = self._readFromStream(resp, length)
+            if receivedStr is None or new_length == 0:
+                # if we claim to have read but it has length 0, it means we've
+                # been disconnected
+                resp.close()
+                return
+            # do not hold reading functionality, save it and let scheduler
+            # process it.
+            return receivedStr
+
+    # Simple Function: Read if we can, return it, otherwise return None
+    def _readFromStream(self, resp, count):
+        read_count = 0
+        tweet_buffer = ''
+        while read_count < count:
+            try:
+                temp_buffer = resp.read(count - read_count).decode('utf-8')
+                if temp_buffer is not None:
+                    length = len(temp_buffer)
+                    if length == 0:
+                        # requested read returned 0, this is a closed
+                        # connection symptom
+                        return None, 0
+                    # partial read was ok, add it to current results
+                    tweet_buffer += temp_buffer
+                    read_count += length
+                else:
+                    return None, 0
+            except SSLError:
+                # the read timed out, nothing was read
+                return None, 0
+            except Exception as e:
+                self._logger.error('Error reading from stream : {0}'.format(e))
+                return None, 0
+        return tweet_buffer, read_count
+
+    def _connect_to_streaming(self):
+        try:
+            self._conn = http.client.HTTPSConnection(
+                host='stream.twitter.com',
+                timeout=45)
+
+            request_params = {
+                # include twitter query parameters below
+                'stall_warnings': 'true',
+                'delimited': 'length'
+            }
+
+            request_params['track'] = ','.join(self.phrases)
+
+            req_headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': '*/*'
+            }
+
+            # get the signed request with the proper oauth creds
+            req = self._getOauthRequest(request_params)
+
+            self._conn.request('POST',
+                               STREAMING_URL,
+                               body=req.to_postdata(),
+                               headers=req_headers)
+            response = self._conn.getresponse()
+
+            if response.status != 200:
+                self._logger.warning(
+                    'Status:{0} returned from twitter'.format(response.status))
+                return False
+            else:
+                self._logger.debug('Connected to Streaming API Successfully')
+
+                self._last_rcv = datetime.utcnow()
+                self._rc_delay = None
+
+                if self._rc_job is not None:
+                    self._logger.debug("We were reconnecting, now we're done!")
+                    self._rc_job.cancel()
+
+                self._monitor_job = Job(
+                    self._monitor_connection,
+                    self.rc_interval,
+                    True
+                )
+
+                self._stream = response
+                # Return true, we are connected!
+                return True
+
+        except Exception as e:
+            self._logger.error('Error opening connection : {0}'.format(e))
+            return False
+
+    # This function uses the oauthCreds passed from the transducer to sign the
+    # request
+    def _getOauthRequest(self, request_params):
+        request_params['oauth_version'] = '1.0'
+        request_params['oauth_nonce'] = oauth.generate_nonce()
+        request_params['oauth_timestamp'] = int(time.time())
+
+        req = oauth.Request(method='POST',
+                            url=STREAMING_URL,
+                            parameters=request_params)
+
+        req.sign_request(
+            signature_method=oauth.SignatureMethod_HMAC_SHA1(),
+            consumer=oauth.Consumer(
+                self.creds.consumer_key, self.creds.app_secret),
+            token=oauth.Token(
+                self.creds.oauth_token, self.creds.oauth_token_secret)
+        )
+
+        return req
 
     def _record_tweet(self, tweet):
         """ Decode the tweet and add it to the end of the list
 
         """
         try:
-            data = json.loads(tweet.decode('utf-8'))
+            data = json.loads(tweet)
             data = self._select_fields(data)
             tw = Tweet(data)
             self._tweet_lock.acquire()
             self._tweets.append(tw)
             self._tweet_lock.release()
         except Exception as e:
+            return
             self._logger.error("Could not parse Tweet: "
                                "%s" % str(e))
 
@@ -190,70 +330,6 @@ class Twitter(Block):
                 self._logger.error("Invalid Twitter field: %s" % f)
 
         return result
-
-    def _connect_to_streaming(self):
-        """ Attempt to connect to the Twitter Streaming API
-
-        Will return True if the connection is made. If a connection fails, this
-        method will return False and schedule reconnection attempts using the
-        backoff strategy as per Twitter's API documentation.
-
-        """
-        try:
-            self._stream = requests.post(STREAMING_URL,
-                                         data={'track': self._join_phrases()},
-                                         headers={'User-Agent': 'NIO 1.0'},
-                                         stream=True,
-                                         auth=self._auth)
-            status = self._stream.status_code
-            self._logger.info("Streaming connection status: %d" % status)
-
-            # reconnect attempt and backoff implementation for HTTP errors
-            if status == 200:
-                self._last_rcv = datetime.utcnow()
-                self._rc_delay = None
-
-                if self._rc_job is not None:
-                    self._logger.debug("We were reconnecting, now we're done!")
-                    self._rc_job.cancel()
-
-                self._monitor_job = Job(
-                    self._monitor_connection,
-                    self.rc_interval,
-                    True
-                )
-
-                # Return true, we are connected!
-                return True
-            elif status == 420:
-                self._logger.debug("Twitter is rate limiting your requests")
-                self._rc_delay = self._rc_delay or ONE_MIN / 2.0
-            else:
-                self._logger.error("Status %s, going to need to reconnect"
-                                   % status)
-                self._rc_delay = self._rc_delay or FIVE_SEC / 2.0
-
-            # We didn't connect, double the reconnect delay
-            self._rc_delay *= 2
-            self._logger.debug("Doubling reconnect delay from %s" %
-                               self._rc_delay)
-
-        # handles backoff for TCP level errors
-        except Exception as e:
-            self._logger.error("While reconnecting to Twitter: %s" % str(e))
-            self._rc_delay = self._rc_delay or timedelta(0)
-            self._rc_delay += TCPERR_INT
-
-        finally:
-            if self._rc_delay is not None:
-                self._logger.debug("Trying to reconnect in %s seconds" %
-                                   self._rc_delay)
-                self._rc_job = Job(self._stream_tweets,
-                                   self._rc_delay, False)
-
-        # If we are here, we didn't connect and we have a reconnect job
-        # scheduled
-        return False
 
     def _notify_tweets(self):
         self._tweet_lock.acquire()
