@@ -153,12 +153,19 @@ class Twitter(Block):
         """
         # build the length buffer
         buf = bytes('', 'utf-8')
-        while not buf or buf[-1] != ord('\r'):
+        while not buf or buf[-1] != ord('\n'):
             bytes_read = self._read_bytes(1)
             if bytes_read:
                 buf += bytes_read
             else:
                 raise Exception("No bytes read from stream")
+
+        # checking to see if it's a 'keep-alive'
+        if len(buf) <= 2:
+            # only recieved \r\n so it is a keep-alive. move on.
+            self._logger.debug('Received a keep-alive signal from Twitter.')
+            self._last_rcv = datetime.utcnow()
+            return None
 
         return self._read_bytes(int(buf))
 
