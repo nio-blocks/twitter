@@ -12,6 +12,13 @@ Properties
 -   **notify_freq**: Frequency at which tweets are notified from the block.
 -   **fields**: Tweet fields to notify on the signal. If unspecified, all fields from tweets will be notified.
 
+Dependencies
+----------------
+
+-   [requests](https://pypi.python.org/pypi/requests/)
+-   [requests_oathlib](https://pypi.python.org/pypi/requests-oauthlib)
+-   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux)
+
 Commands
 ----------------
 None
