@@ -16,7 +16,7 @@ Dependencies
 ----------------
 
 -   [requests](https://pypi.python.org/pypi/requests/)
--   [requests_oathlib](https://pypi.python.org/pypi/requests-oauthlib)
+-   [requests_oauthlib](https://pypi.python.org/pypi/requests-oauthlib)
 -   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux)
 
 Commands
