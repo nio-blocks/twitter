@@ -30,10 +30,10 @@ class TwitterCreds(PropertyHolder):
     """ Property holder for Twitter OAuth credentials.
 
     """
-    consumer_key = StringProperty()
-    app_secret = StringProperty()
-    oauth_token = StringProperty()
-    oauth_token_secret = StringProperty()
+    consumer_key = StringProperty(title='Consumer Key')
+    app_secret = StringProperty(title='App Secret')
+    oauth_token = StringProperty(title='OAuth Token')
+    oauth_token_secret = StringProperty(title='OAuth Token Secret')
 
 
 class Tweet(Signal):
@@ -68,11 +68,13 @@ class Twitter(Block):
             or hearbeats) before attempting to reconnect to Twitter Streaming.
 
     """
-    phrases = ListProperty(str)
-    fields = ListProperty(str)
-    notify_freq = TimeDeltaProperty(default={"seconds": 2})
-    creds = ObjectProperty(TwitterCreds)
-    rc_interval = TimeDeltaProperty(default={"seconds": 90})
+    phrases = ListProperty(str, title='Query Phrases')
+    fields = ListProperty(str, title='Included Fields')
+    notify_freq = TimeDeltaProperty(default={"seconds": 2}, 
+                                    title='Notification Frequency')
+    creds = ObjectProperty(TwitterCreds, title='Credentials')
+    rc_interval = TimeDeltaProperty(default={"seconds": 90}, 
+                                    title='Reconnect Interval')
 
     def __init__(self):
         super().__init__()
@@ -290,6 +292,7 @@ class Twitter(Block):
             with self._tweet_lock:
                 self._tweets.append(tw)
         except Exception as e:
+            print(type(e).__name__, e)
             self._logger.error("Could not parse Tweet: %s" % str(e))
 
     def _select_fields(self, data):
