@@ -12,9 +12,9 @@ from nio.metadata.properties.list import ListProperty
 from nio.metadata.properties.timedelta import TimeDeltaProperty
 from nio.metadata.properties.object import ObjectProperty
 from nio.metadata.properties.string import StringProperty
-from nio.modules.scheduler.imports import Job
+from nio.modules.scheduler import Job
 from nio.common.signal.base import Signal
-from nio.modules.threading.imports import Lock, spawn, Event
+from nio.modules.threading import Lock, spawn, Event
 
 
 VERIFY_CREDS_URL = ('https://api.twitter.com/1.1/'

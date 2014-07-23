@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from twitter.twitter_block import Twitter
 from nio.util.support.block_test_case import NIOBlockTestCase
 from nio.configuration.settings import Settings
-from nio.modules.threading.imports import Event
+from nio.modules.threading import Event
 
 SOME_TWEET = {
     'created_at': 'April 6, 1986',
