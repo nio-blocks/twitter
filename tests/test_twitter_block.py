@@ -1,6 +1,6 @@
+from ..twitter_block import Twitter
 import json
 from unittest.mock import MagicMock
-from twitter.twitter_block import Twitter
 from nio.util.support.block_test_case import NIOBlockTestCase
 from nio.configuration.settings import Settings
 from nio.modules.threading import Event
