@@ -16,7 +16,7 @@ SOME_TWEET = {
 
 
 class EventTwitter(Twitter):
-    
+
     def __init__(self, e):
         super().__init__()
         self._e = e
@@ -24,6 +24,10 @@ class EventTwitter(Twitter):
     def _notify_tweets(self):
         super()._notify_tweets()
         self._e.set()
+
+    def _read_tweet(self):
+        self._stop_event.set()
+        return bytes(json.dumps(SOME_TWEET), 'utf-8')
 
 
 class TestTwitter(NIOBlockTestCase):
@@ -41,9 +45,6 @@ class TestTwitter(NIOBlockTestCase):
         self._block = EventTwitter(self.e)
         self._block._connect_to_streaming = MagicMock()
         self._block._authorize = MagicMock()
-        self._block._read_tweet = MagicMock(
-            return_value=bytes(json.dumps(SOME_TWEET), 'utf-8')
-        )
 
     def tearDown(self):
         self._block.stop()
@@ -51,6 +52,7 @@ class TestTwitter(NIOBlockTestCase):
 
     def test_deliver_signal(self):
         self.configure_block(self._block, {
+            'name': 'TestTwitterBlock',
             'phrases': ['neutralio'],
             'notify_freq': {'milliseconds': 10}
         })
@@ -67,6 +69,7 @@ class TestTwitter(NIOBlockTestCase):
     def test_select_fields(self):
         desired_fields = ['text', 'user', 'bogus']
         self.configure_block(self._block, {
+            'name': 'TestTwitterBlock',
             'phrases': ['neutralio'],
             'fields': desired_fields,
             'notify_freq': {'milliseconds': 10}
