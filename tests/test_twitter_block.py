@@ -21,11 +21,11 @@ class EventTwitter(Twitter):
         super().__init__()
         self._e = e
 
-    def _notify_tweets(self):
-        super()._notify_tweets()
+    def _notify_results(self):
+        super()._notify_results()
         self._e.set()
 
-    def _read_tweet(self):
+    def _read_line(self):
         self._stop_event.set()
         return bytes(json.dumps(SOME_TWEET), 'utf-8')
 
@@ -58,7 +58,7 @@ class TestTwitter(NIOBlockTestCase):
         })
         self._block.start()
         self.e.wait(1)
-        self._block._notify_tweets()
+        self._block._notify_results()
 
         self.assertGreater(self._router.get_signals_from_block(self._block), 0)
 
@@ -76,7 +76,7 @@ class TestTwitter(NIOBlockTestCase):
         })
         self._block.start()
         self.e.wait(1)
-        self._block._notify_tweets()
+        self._block._notify_results()
 
         self.assertGreater(self._router.get_signals_from_block(self._block), 0)
 
