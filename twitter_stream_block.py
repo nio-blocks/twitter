@@ -271,7 +271,12 @@ class TwitterStreamBlock(Block):
             # reset the last received timestamp
             self._last_rcv = datetime.utcnow()
 
-            data = self.filter_results(json.loads(line.decode('utf-8')))
+            data = json.loads(line.decode('utf-8'))
+            if data and 'limit' in data:
+                self._logger.debug("Limit notice.")
+            else:
+                self._logger.debug("It's a tweet!")
+                data = self.filter_results(json.loads(line.decode('utf-8')))
 
             if data:
                 tw = Signal(data)
