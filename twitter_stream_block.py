@@ -274,6 +274,8 @@ class TwitterStreamBlock(Block):
             data = json.loads(line.decode('utf-8'))
             if data and 'limit' in data:
                 self._logger.debug("Limit notice.")
+                # don't output the 'limit' message as a signal.
+                return
             else:
                 self._logger.debug("It's a tweet!")
                 data = self.filter_results(json.loads(line.decode('utf-8')))
