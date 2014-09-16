@@ -18,10 +18,10 @@ class TwitterCreds(PropertyHolder):
     """ Property holder for Twitter OAuth credentials.
 
     """
-    consumer_key = StringProperty(title='Consumer Key')
-    app_secret = StringProperty(title='App Secret')
-    oauth_token = StringProperty(title='OAuth Token')
-    oauth_token_secret = StringProperty(title='OAuth Token Secret')
+    consumer_key = StringProperty(title='API Key', default="[[TWITTER_API_KEY]]")
+    app_secret = StringProperty(title='API Secret', default="[[TWITTER_API_SECRET]]")
+    oauth_token = StringProperty(title='Access Token', default="[[TWITTER_ACCESS_TOKEN]]")
+    oauth_token_secret = StringProperty(title='Access Token Secret', default="[[TWITTER_ACCESS_TOKEN_SECRET]]")
 
 
 class TwitterStreamBlock(Block):
