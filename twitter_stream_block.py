@@ -208,7 +208,7 @@ class TwitterStreamBlock(Block):
 
                 # Clear any reconnects we had
                 if self._rc_job is not None:
-                    self._logger.debug("We were reconnecting, now we're done!")
+                    self._logger.error("We were reconnecting, now we're done!")
                     self._rc_job.cancel()
                     self._rc_delay = timedelta(seconds=1)
                     self._rc_job = None
@@ -286,7 +286,6 @@ class TwitterStreamBlock(Block):
                     self._result_signals.append(tw)
 
         except Exception as e:
-            print(type(e).__name__, e)
             self._logger.error("Could not parse line: %s" % str(e))
 
     def filter_results(self, data):
@@ -312,7 +311,7 @@ class TwitterStreamBlock(Block):
         time_since_data = current_time - self._last_rcv
         if time_since_data > self.rc_interval:
             self._logger.warning("No data received, we might be disconnected")
-            self._reconnect()
+            self._setup_reconnect_attempt()
 
     def _authorize(self):
         """ Prepare the OAuth handshake and verify.
