@@ -68,7 +68,7 @@ Dependencies
 
 -   [requests](https://pypi.python.org/pypi/requests/)
 -   [requests_oauthlib](https://pypi.python.org/pypi/requests-oauthlib)
--   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux)
+-   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux) Install with `pip install git+git://github.com/tseaver/python-oauth2/tree/py3-redux`
 
 Commands
 ----------------
