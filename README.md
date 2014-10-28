@@ -27,7 +27,7 @@ Dependencies
 
 -   [requests](https://pypi.python.org/pypi/requests/)
 -   [requests_oauthlib](https://pypi.python.org/pypi/requests-oauthlib)
--   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux) -- branch py3
+-   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux) -- `pip install https://github.com/tseaver/python-oauth2/archive/py3.zip`
 
 Commands
 ----------------
@@ -68,7 +68,7 @@ Dependencies
 
 -   [requests](https://pypi.python.org/pypi/requests/)
 -   [requests_oauthlib](https://pypi.python.org/pypi/requests-oauthlib)
--   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux) -- branch py3
+-   [oauth2](https://github.com/tseaver/python-oauth2/tree/py3-redux) -- `pip install https://github.com/tseaver/python-oauth2/archive/py3.zip`
 
 Commands
 ----------------
