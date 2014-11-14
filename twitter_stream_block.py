@@ -279,13 +279,14 @@ class TwitterStreamBlock(Block):
             self._last_rcv = datetime.utcnow()
 
             data = json.loads(line.decode('utf-8'))
+            # don't output 'limit' and 'delete' messages from twitter as
+            # signals. For now just ignore them. When we have multiple block
+            # outputs, they will be notified on different outputs.
             if data and 'limit' in data:
                 self._logger.debug("Limit notice.")
-                # don't output the 'limit' message as a signal.
                 return
             elif data and 'delete' in data:
                 self._logger.debug("Delete notice.")
-                # don't output the 'limit' message as a signal.
                 return
             else:
                 self._logger.debug("It's a tweet!")
