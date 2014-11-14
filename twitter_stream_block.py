@@ -40,7 +40,8 @@ class TwitterStreamBlock(Block):
     """
     notify_freq = TimeDeltaProperty(default={"seconds": 2},
                                     title='Notification Frequency')
-    creds = ObjectProperty(TwitterCreds, title='Credentials')
+    creds = ObjectProperty(TwitterCreds, title='Credentials',
+                           default=TwitterCreds())
     rc_interval = TimeDeltaProperty(default={"seconds": 90},
                                     title='Reconnect Interval')
 
@@ -65,12 +66,17 @@ class TwitterStreamBlock(Block):
     def start(self):
         super().start()
         self._authorize()
+        self._start()
         spawn(self._run_stream)
         self._notify_job = Job(
             self._notify_results,
             self.notify_freq,
             True
         )
+
+    def _start(self):
+        """ Override in blocks that need to run code before start """
+        pass
 
     def stop(self):
         self._stop_event.set()
@@ -201,7 +207,8 @@ class TwitterStreamBlock(Block):
 
             if response.status != 200:
                 self._logger.warning(
-                    'Status:{0} returned from twitter'.format(response.status))
+                    'Status: {} returned from twitter: {}'.format(
+                        response.status, response.read()))
                 return False
             else:
                 self._logger.debug('Connected to Streaming API Successfully')
@@ -274,6 +281,10 @@ class TwitterStreamBlock(Block):
             data = json.loads(line.decode('utf-8'))
             if data and 'limit' in data:
                 self._logger.debug("Limit notice.")
+                # don't output the 'limit' message as a signal.
+                return
+            elif data and 'delete' in data:
+                self._logger.debug("Delete notice.")
                 # don't output the 'limit' message as a signal.
                 return
             else:
