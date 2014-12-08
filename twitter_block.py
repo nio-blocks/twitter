@@ -1,8 +1,30 @@
 from .twitter_stream_block import TwitterStreamBlock
 from nio.common.discovery import Discoverable, DiscoverableType
-from nio.metadata.properties import ListProperty
+from nio.metadata.properties import ListProperty, SelectProperty,\
+    ObjectProperty, PropertyHolder, FloatProperty
 from requests_oauthlib import OAuth1
 import requests
+from enum import Enum
+
+
+class FilterLevel(Enum):
+    none = 0
+    low = 1
+    medium = 2
+
+
+class Coordinate(PropertyHolder):
+    latitude = FloatProperty(title='Latitude', default=0.00)
+    longitude = FloatProperty(title='Longitude', default=0.00)
+
+
+class Location(PropertyHolder):
+    southwest = ObjectProperty(Coordinate,
+                               default=Coordinate(),
+                               title='Southwest')
+    northeast = ObjectProperty(Coordinate,
+                               default=Coordinate(),
+                               title='Northeast')
 
 
 @Discoverable(DiscoverableType.block)
@@ -18,6 +40,12 @@ class Twitter(TwitterStreamBlock):
         fields (list(str)): Outgoing signals will pull these fields
             from incoming tweets. When empty/unset, all fields are
             included.
+        language (list(str)): Only get tweets of the specifed language.
+        filter_level (FilterLevel): Minimum value of teh filter_level Tweet
+            attribute.
+        locations (list(Location)): A comma-separated list of longitude,
+            latitude pairs specifying a set of bounding boxes to filter
+            Tweets by.
         notify_freq (timedelta): The interval between signal notifications.
         creds: Twitter app credentials, see above. Defaults to global settings.
         rc_interval (timedelta): Time to wait between receipts (either tweets
@@ -27,6 +55,11 @@ class Twitter(TwitterStreamBlock):
     phrases = ListProperty(str, title='Query Phrases')
     follow = ListProperty(str, title='Follow Users')
     fields = ListProperty(str, title='Included Fields')
+    language = ListProperty(str, default=['en'], title='Language')
+    filter_level = SelectProperty(FilterLevel,
+                                  default=FilterLevel.none,
+                                  title='Filter Level')
+    locations = ListProperty(Location, title='Locations')
 
     streaming_host = 'stream.twitter.com'
     streaming_endpoint = '1.1/statuses/filter.json'
@@ -60,12 +93,24 @@ class Twitter(TwitterStreamBlock):
         self._logger.debug("Following {} users".format(len(self._user_ids)))
 
     def get_params(self):
-        return {
+        params = {
             'stall_warnings': 'true',
             'delimited': 'length',
             'track': ','.join(self.phrases),
-            'follow': ','.join(self._user_ids)
+            'follow': ','.join(self._user_ids),
+            'filter_level': self.filter_level.name
         }
+        if len(self.language):
+            params['language'] = ','.join(self.language)
+        if len(self.locations):
+            locations = []
+            for location in self.locations:
+                locations.append(str(location.southwest.longitude))
+                locations.append(str(location.southwest.latitude))
+                locations.append(str(location.northeast.longitude))
+                locations.append(str(location.northeast.latitude))
+            params['locations'] = ','.join(locations)
+        return params
 
     def get_request_method(self):
         return "POST"
