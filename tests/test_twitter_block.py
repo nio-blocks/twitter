@@ -91,3 +91,18 @@ class TestTwitter(NIOBlockTestCase):
 
         # Check that we got ONLY those fields
         self.assertCountEqual(notified.__dict__.keys(), desired_fields[0:-1])
+
+    def test_params(self):
+        self.configure_block(self._block, {
+            'language': ['en', 'es'],
+            'locations': [{'southwest':
+                           {'latitude': -1.00, 'longitude': -2.00},
+                           'northeast':
+                           {'latitude': 1.00, 'longitude': 2.00}
+                          }]
+        })
+        self._block.start()
+        params = self._block.get_params()
+        self.assertEqual('none', params['filter_level'])
+        self.assertEqual('en,es', params['language'])
+        self.assertEqual('-2.0,-1.0,2.0,1.0', params['locations'])
