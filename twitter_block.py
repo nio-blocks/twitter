@@ -41,7 +41,7 @@ class Twitter(TwitterStreamBlock):
             from incoming tweets. When empty/unset, all fields are
             included.
         language (list(str)): Only get tweets of the specifed language.
-        filter_level (FilterLevel): Minimum value of teh filter_level Tweet
+        filter_level (FilterLevel): Minimum value of the filter_level Tweet
             attribute.
         locations (list(Location)): A comma-separated list of longitude,
             latitude pairs specifying a set of bounding boxes to filter
@@ -100,9 +100,9 @@ class Twitter(TwitterStreamBlock):
             'follow': ','.join(self._user_ids),
             'filter_level': self.filter_level.name
         }
-        if len(self.language):
+        if self.language:
             params['language'] = ','.join(self.language)
-        if len(self.locations):
+        if self.locations:
             locations = []
             for location in self.locations:
                 locations.append(str(location.southwest.longitude))
