@@ -5,6 +5,7 @@ from nio.util.support.block_test_case import NIOBlockTestCase
 from nio.configuration.settings import Settings
 from nio.modules.threading import Event
 
+
 SOME_TWEET = {
     'created_at': 'April 6, 1986',
     'text': '@World, Hello!',
@@ -14,6 +15,21 @@ SOME_TWEET = {
     'lang': 'es'
 }
 
+
+LIMIT_MSG = {
+    'limit': {
+        'track': 1234
+    }
+}
+
+
+DIAG_MSG = {
+    'disconnect': {
+        'code': 5,
+        'reason': 'Normal'
+    }
+}
+        
 
 class EventTwitter(Twitter):
 
@@ -25,9 +41,26 @@ class EventTwitter(Twitter):
         super()._notify_results()
         self._e.set()
 
+
+class TweetTwitter(EventTwitter):
+
     def _read_line(self):
         self._stop_event.set()
         return bytes(json.dumps(SOME_TWEET), 'utf-8')
+
+
+class LimitTwitter(EventTwitter):
+
+    def _read_line(self):
+        self._stop_event.set()
+        return bytes(json.dumps(LIMIT_MSG), 'utf-8')
+
+
+class DiagnosticTwitter(EventTwitter):
+
+    def _read_line(self):
+        self._stop_event.set()
+        return bytes(json.dumps(DIAG_MSG), 'utf-8')
 
 
 class TestTwitter(NIOBlockTestCase):
@@ -42,7 +75,7 @@ class TestTwitter(NIOBlockTestCase):
 
         # initialize a block that won't actually talk to Twitter
         self.e = Event()
-        self._block = EventTwitter(self.e)
+        self._block = TweetTwitter(self.e)
         self._block._connect_to_streaming = MagicMock()
         self._block._authorize = MagicMock()
 
@@ -106,3 +139,41 @@ class TestTwitter(NIOBlockTestCase):
         self.assertEqual('none', params['filter_level'])
         self.assertEqual('en,es', params['language'])
         self.assertEqual('-2.0,-1.0,2.0,1.0', params['locations'])
+
+    def test_limit_message(self):
+        self._block = LimitTwitter(self.e)
+        self._block._connect_to_streaming = MagicMock()
+        self._block._authorize = MagicMock()
+
+        self.configure_block(self._block, {
+            'name': 'TestLimitBlock',
+            'phrases': ['neutralio'],
+            'notify_freq': {'milliseconds': 10}
+        })
+        self._block.start()
+        self.e.wait(1)
+        self._block._notify_results()
+
+        notified = self.signals[0]
+        for key in LIMIT_MSG:
+            self.assertEqual(getattr(notified, key), LIMIT_MSG[key])
+
+
+    def test_diagnostic_message(self):
+        self._block = DiagnosticTwitter(self.e)
+        self._block._connect_to_streaming = MagicMock()
+        self._block._authorize = MagicMock()
+
+        self.configure_block(self._block, {
+            'name': 'TestDiagnosticBlock',
+            'phrases': ['neutralio'],
+            'notify_freq': {'milliseconds': 10}
+        })
+        self._block.start()
+        self.e.wait(1)
+        self._block._notify_results()
+        
+        notified = self.signals[0]
+        for key in DIAG_MSG:
+            self.assertEqual(getattr(notified, key), DIAG_MSG[key])
+            

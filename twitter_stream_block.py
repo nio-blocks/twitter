@@ -85,6 +85,8 @@ class TwitterStreamBlock(Block):
         self._diagnostic_signals = []
         self._limit_signals = []
         self._result_lock = Lock()
+        self._diagnostic_lock = Lock()
+        self._limit_lock = Lock()
         self._stop_event = Event()
         self._stream = None
         self._last_rcv = datetime.utcnow()
@@ -316,11 +318,11 @@ class TwitterStreamBlock(Block):
             # outputs, they will be notified on different outputs.
             for msg in PUB_STREAM_MSGS:
                 if data and msg in data:
-
+                    
                     # Log something about the message
                     report = "{} notice".format(PUB_STREAM_MSGS[msg])
                     if msg == "disconnect":
-                        error_idx = int(data['code']) - 1
+                        error_idx = int(data['disconnect']['code']) - 1
                         report += ": {}".format(DISCONNECT_REASONS[error_idx])
                     elif msg == "warning":
                         report += ": {}".format(data['message'])
@@ -328,9 +330,11 @@ class TwitterStreamBlock(Block):
 
                     # Add a signal to the appropriate list
                     if msg == "limit":
-                        self._limit_signals.append(Signal(data))
+                        with self._limit_lock:
+                            self._limit_signals.append(Signal(data))
                     else:
-                        self._diagnostic_signals.append(Signals(data))
+                        with self._diagnostic_lock:
+                            self._diagnostic_signals.append(Signal(data))
                     
                     return
                 
@@ -350,17 +354,20 @@ class TwitterStreamBlock(Block):
     def _notify_results(self):
         """Method to be called from the notify job, will notify any tweets
         that have been buffered by the block, then clear the buffer.
-        """
-        with self._result_lock:
 
+        """
+
+        with self._result_lock:
             if self._result_signals:
                 self.notify_signals(self._result_signals)
                 self._result_signals = []
 
+        with self._diagnostic_lock:
             if self._diagnostic_signals:
                 self.notify_signals(self._diagnostic_signals, "diagnostic")
                 self._diagnostic_signals = []
 
+        with self._limit_lock:
             if self._limit_signals:
                 self.notify_signals(self._limit_signals, "limit")
                 self._limit_signals = []
