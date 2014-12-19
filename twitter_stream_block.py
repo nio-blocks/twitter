@@ -6,6 +6,7 @@ from datetime import timedelta, datetime
 import time
 from requests_oauthlib import OAuth1
 from nio.common.block.base import Block
+from nio.common.block.attribute import Output
 from nio.metadata.properties import PropertyHolder, TimeDeltaProperty, \
     ObjectProperty, StringProperty
 from nio.modules.scheduler import Job
@@ -13,6 +14,35 @@ from nio.common.signal.base import Signal
 from nio.modules.threading import Lock, spawn, Event
 
 
+PUB_STREAM_MSGS = {
+    'limit': "Limit",
+    'delete': "Deletion",
+    'scrub_geo': "Location Deletion",
+    'status_witheld': "Status Witheld",
+    'user_witheld': "User Witheld",
+    'disconnect': "Disconnect",
+    'warning': "Stall Warning"
+}
+
+
+DISCONNECT_REASONS = [
+    "Shutdown",
+    "Duplicate stream",
+    "Control request",
+    "Stall",
+    "Normal",
+    "Token revoked",
+    "Admin revoked",
+    '',
+    "Max message limit",
+    "Stream exception",
+    "Broker stall",
+    "Shed load"
+]
+
+
+@Output("diagnostics")
+@Output("limit")
 class TwitterCreds(PropertyHolder):
 
     """ Property holder for Twitter OAuth credentials.
@@ -52,7 +82,11 @@ class TwitterStreamBlock(Block):
     def __init__(self):
         super().__init__()
         self._result_signals = []
+        self._diagnostic_signals = []
+        self._limit_signals = []
         self._result_lock = Lock()
+        self._diagnostic_lock = Lock()
+        self._limit_lock = Lock()
         self._stop_event = Event()
         self._stream = None
         self._last_rcv = datetime.utcnow()
@@ -282,16 +316,30 @@ class TwitterStreamBlock(Block):
             # don't output 'limit' and 'delete' messages from twitter as
             # signals. For now just ignore them. When we have multiple block
             # outputs, they will be notified on different outputs.
-            if data and 'limit' in data:
-                self._logger.debug("Limit notice.")
-                return
-            elif data and 'delete' in data:
-                self._logger.debug("Delete notice.")
-                return
-            else:
-                self._logger.debug("It's a tweet!")
-                data = self.filter_results(json.loads(line.decode('utf-8')))
+            for msg in PUB_STREAM_MSGS:
+                if data and msg in data:
+                    
+                    # Log something about the message
+                    report = "{} notice".format(PUB_STREAM_MSGS[msg])
+                    if msg == "disconnect":
+                        error_idx = int(data['disconnect']['code']) - 1
+                        report += ": {}".format(DISCONNECT_REASONS[error_idx])
+                    elif msg == "warning":
+                        report += ": {}".format(data['message'])
+                    self._logger.debug(report)
 
+                    # Add a signal to the appropriate list
+                    if msg == "limit":
+                        with self._limit_lock:
+                            self._limit_signals.append(Signal(data))
+                    else:
+                        with self._diagnostic_lock:
+                            self._diagnostic_signals.append(Signal(data))
+                    
+                    return
+                
+            self._logger.debug("It's a tweet!")
+            data = self.filter_results(json.loads(line.decode('utf-8')))
             if data:
                 tw = Signal(data)
                 with self._result_lock:
@@ -306,13 +354,23 @@ class TwitterStreamBlock(Block):
     def _notify_results(self):
         """Method to be called from the notify job, will notify any tweets
         that have been buffered by the block, then clear the buffer.
-        """
-        with self._result_lock:
-            if len(self._result_signals) == 0:
-                return
 
-            self.notify_signals(self._result_signals)
-            self._result_signals = []
+        """
+
+        with self._result_lock:
+            if self._result_signals:
+                self.notify_signals(self._result_signals)
+                self._result_signals = []
+
+        with self._diagnostic_lock:
+            if self._diagnostic_signals:
+                self.notify_signals(self._diagnostic_signals, "diagnostic")
+                self._diagnostic_signals = []
+
+        with self._limit_lock:
+            if self._limit_signals:
+                self.notify_signals(self._limit_signals, "limit")
+                self._limit_signals = []
 
     def _monitor_connection(self):
         """ Scheduled to run every self.rc_interval. Makes sure that some
