@@ -65,7 +65,7 @@ class DiagnosticTwitter(EventTwitter):
 
 class TestTwitter(NIOBlockTestCase):
 
-    def signals_notified(self, signals):
+    def signals_notified(self, signals, output_id='default'):
         self.signals = signals
 
     def setUp(self):
