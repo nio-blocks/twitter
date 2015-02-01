@@ -15,7 +15,7 @@ from nio.modules.threading import Lock, spawn, Event
 
 
 PUB_STREAM_MSGS = {
-    'limit': "Limit",
+#    'limit': "Limit",
     'delete': "Deletion",
     'scrub_geo': "Location Deletion",
     'status_witheld': "Status Witheld",
@@ -318,7 +318,7 @@ class TwitterStreamBlock(Block):
             # outputs, they will be notified on different outputs.
             for msg in PUB_STREAM_MSGS:
                 if data and msg in data:
-                    
+
                     # Log something about the message
                     report = "{} notice".format(PUB_STREAM_MSGS[msg])
                     if msg == "disconnect":
@@ -335,11 +335,14 @@ class TwitterStreamBlock(Block):
                     else:
                         with self._diagnostic_lock:
                             self._diagnostic_signals.append(Signal(data))
-                    
+
                     return
-                
-            self._logger.debug("It's a tweet!")
-            data = self.filter_results(json.loads(line.decode('utf-8')))
+
+            if data and 'limit' in data:
+                self._logger.debug("Limit notice.")
+            else:
+                self._logger.debug("It's a tweet!")
+                data = self.filter_results(json.loads(line.decode('utf-8')))
             if data:
                 tw = Signal(data)
                 with self._result_lock:
