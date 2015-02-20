@@ -23,13 +23,32 @@ LIMIT_MSG = {
 }
 
 
+LIMIT_MSGS = [
+{
+    'limit': {
+        'track': 1234
+    }
+},
+{
+    'limit': {
+        'track': 1000
+    }
+},
+{
+    'limit': {
+        'track': 2000
+    }
+}
+]
+
+
 DIAG_MSG = {
     'disconnect': {
         'code': 5,
         'reason': 'Normal'
     }
 }
-        
+
 
 class EventTwitter(Twitter):
 
@@ -51,9 +70,17 @@ class TweetTwitter(EventTwitter):
 
 class LimitTwitter(EventTwitter):
 
+    def __init__(self, e, num_events):
+        super().__init__(e)
+        self._e = e
+        self._read_counter = 0
+        self._num_events = num_events
+
     def _read_line(self):
-        self._stop_event.set()
-        return bytes(json.dumps(LIMIT_MSG), 'utf-8')
+        self._read_counter = self._read_counter + 1
+        if self._read_counter >= self._num_events:
+            self._stop_event.set()
+        return bytes(json.dumps(LIMIT_MSGS[self._read_counter-1]), 'utf-8')
 
 
 class DiagnosticTwitter(EventTwitter):
@@ -141,7 +168,8 @@ class TestTwitter(NIOBlockTestCase):
         self.assertEqual('-2.0,-1.0,2.0,1.0', params['locations'])
 
     def test_limit_message(self):
-        self._block = LimitTwitter(self.e)
+        num_limits = 3
+        self._block = LimitTwitter(self.e, num_limits)
         self._block._connect_to_streaming = MagicMock()
         self._block._authorize = MagicMock()
 
@@ -152,12 +180,14 @@ class TestTwitter(NIOBlockTestCase):
         })
         self._block.start()
         self.e.wait(1)
-        self._block._notify_results()
 
-        notified = self.signals[0]
-        for key in LIMIT_MSG:
-            self.assertEqual(getattr(notified, key), LIMIT_MSG[key])
-
+        limit_counts = [1234, 0, 2000-1234]
+        for i in range(num_limits):
+            notified = self.signals[i]
+            print(notified)
+            for key in LIMIT_MSGS[i]:
+                self.assertEqual(getattr(notified, key), LIMIT_MSGS[i][key])
+            self.assertEqual(getattr(notified, 'limit_count'), limit_counts[i])
 
     def test_diagnostic_message(self):
         self._block = DiagnosticTwitter(self.e)
@@ -172,8 +202,8 @@ class TestTwitter(NIOBlockTestCase):
         self._block.start()
         self.e.wait(1)
         self._block._notify_results()
-        
+
         notified = self.signals[0]
         for key in DIAG_MSG:
             self.assertEqual(getattr(notified, key), DIAG_MSG[key])
-            
+

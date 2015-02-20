@@ -90,6 +90,7 @@ class TwitterStreamBlock(Block):
         self._stop_event = Event()
         self._stream = None
         self._last_rcv = datetime.utcnow()
+        self._limit_count = 0
 
         # Jobs to run throughout execution
         self._notify_job = None    # notifies signals
@@ -131,6 +132,9 @@ class TwitterStreamBlock(Block):
         if self._stream:
             self._stream.close()
             self._stream = None
+
+        # This is a new stream so reset the limit count
+        self._limit_count = 0
 
         # Try to connect, if we can't, don't start streaming, but try reconnect
         if not self._connect_to_streaming():
@@ -340,6 +344,14 @@ class TwitterStreamBlock(Block):
 
             if data and 'limit' in data:
                 self._logger.debug("Limit notice.")
+                track = data.get('limit', {}).get('track', 0)
+                if track > self._limit_count:
+                    limit = track - self._limit_count
+                    self._limit_count = track
+                else:
+                    limit = 0
+                data['limit_count'] = limit
+
             else:
                 self._logger.debug("It's a tweet!")
                 data = self.filter_results(json.loads(line.decode('utf-8')))
