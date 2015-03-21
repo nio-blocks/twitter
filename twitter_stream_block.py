@@ -4,6 +4,7 @@ import oauth2 as oauth
 import http.client
 from datetime import timedelta, datetime
 import time
+from collections import defaultdict
 from requests_oauthlib import OAuth1
 from nio.common.block.base import Block
 from nio.common.block.attribute import Output
@@ -15,7 +16,7 @@ from nio.modules.threading import Lock, spawn, Event
 
 
 PUB_STREAM_MSGS = {
-#    'limit': "Limit",
+    'limit': "Limit",
     'delete': "Deletion",
     'scrub_geo': "Location Deletion",
     'status_witheld': "Status Witheld",
@@ -41,8 +42,6 @@ DISCONNECT_REASONS = [
 ]
 
 
-@Output("diagnostics")
-@Output("limit")
 class TwitterCreds(PropertyHolder):
 
     """ Property holder for Twitter OAuth credentials.
@@ -54,6 +53,8 @@ class TwitterCreds(PropertyHolder):
     oauth_token_secret = StringProperty(title='Access Token Secret', default="[[TWITTER_ACCESS_TOKEN_SECRET]]")
 
 
+@Output("other")
+@Output("limit")
 class TwitterStreamBlock(Block):
 
     """ A parent block for communicating with the Twitter Streaming API.
@@ -81,16 +82,14 @@ class TwitterStreamBlock(Block):
 
     def __init__(self):
         super().__init__()
-        self._result_signals = []
-        self._diagnostic_signals = []
-        self._limit_signals = []
-        self._result_lock = Lock()
-        self._diagnostic_lock = Lock()
-        self._limit_lock = Lock()
+        self._result_signals = defaultdict(list)
+        self._result_lock = defaultdict(Lock)
+        self._lock_lock = Lock()
         self._stop_event = Event()
         self._stream = None
         self._last_rcv = datetime.utcnow()
         self._limit_count = 0
+        self._limit_lock = Lock()
 
         # Jobs to run throughout execution
         self._notify_job = None    # notifies signals
@@ -332,36 +331,42 @@ class TwitterStreamBlock(Block):
                         report += ": {}".format(data['message'])
                     self._logger.debug(report)
 
-                    # Add a signal to the appropriate list
+                    # Calculate total limit for limit signals
                     if msg == "limit":
-                        with self._limit_lock:
-                            self._limit_signals.append(Signal(data))
-                    else:
-                        with self._diagnostic_lock:
-                            self._diagnostic_signals.append(Signal(data))
+                        # lock when calculating limit
+                        with self._get_result_lock('limit'):
+                            self._calculate_limit(data)
+
+                    # Add a signal to the appropriate list
+                    with self._get_result_lock(msg):
+                        self._result_signals[msg].append(Signal(data))
 
                     return
 
-            if data and 'limit' in data:
-                self._logger.debug("Limit notice.")
-                track = data.get('limit', {}).get('track', 0)
-                if track > self._limit_count:
-                    limit = track - self._limit_count
-                    self._limit_count = track
-                else:
-                    limit = 0
-                data['limit_count'] = limit
-
-            else:
-                self._logger.debug("It's a tweet!")
-                data = self.filter_results(json.loads(line.decode('utf-8')))
+            # If we didn't return yet, the message is a regular tweet.
+            self._logger.debug("It's a tweet!")
+            data = self.filter_results(data)
             if data:
-                tw = Signal(data)
-                with self._result_lock:
-                    self._result_signals.append(tw)
+                with self._get_result_lock('default'):
+                    self._result_signals['default'].append(Signal(data))
 
         except Exception as e:
             self._logger.error("Could not parse line: %s" % str(e))
+
+    def _get_result_lock(self, key):
+        with self._lock_lock:
+            return self._result_lock[key]
+
+    def _calculate_limit(self, data):
+        """ Calculate total limit count for limit signals """
+        track = data.get('limit', {}).get('track', 0)
+        if track > self._limit_count:
+            limit = track - self._limit_count
+            self._limit_count = track
+        else:
+            limit = 0
+        data['limit_count'] = limit
+
 
     def filter_results(self, data):
         return data
@@ -371,21 +376,15 @@ class TwitterStreamBlock(Block):
         that have been buffered by the block, then clear the buffer.
 
         """
-
-        with self._result_lock:
-            if self._result_signals:
-                self.notify_signals(self._result_signals)
-                self._result_signals = []
-
-        with self._diagnostic_lock:
-            if self._diagnostic_signals:
-                self.notify_signals(self._diagnostic_signals, "diagnostic")
-                self._diagnostic_signals = []
-
-        with self._limit_lock:
-            if self._limit_signals:
-                self.notify_signals(self._limit_signals, "limit")
-                self._limit_signals = []
+        output_names = list(self._result_signals.keys())
+        for output in output_names:
+            with self._get_result_lock(output):
+                signals = self._result_signals[output]
+                if signals:
+                    output_id = output \
+                        if output in ['default', 'limit'] else 'other'
+                    self.notify_signals(signals, output_id)
+                    self._result_signals[output] = []
 
     def _monitor_connection(self):
         """ Scheduled to run every self.rc_interval. Makes sure that some

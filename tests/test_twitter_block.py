@@ -93,12 +93,12 @@ class DiagnosticTwitter(EventTwitter):
 class TestTwitter(NIOBlockTestCase):
 
     def signals_notified(self, signals, output_id='default'):
-        self.signals = signals
+        self.signals[output_id] = signals
 
     def setUp(self):
         super().setUp()
         # Settings.import_file()
-        self.signals = None
+        self.signals = {}
 
         # initialize a block that won't actually talk to Twitter
         self.e = Event()
@@ -122,7 +122,7 @@ class TestTwitter(NIOBlockTestCase):
 
         self.assertGreater(self._router.get_signals_from_block(self._block), 0)
 
-        notified = self.signals[0]
+        notified = self.signals['default'][0]
         for key in SOME_TWEET:
             self.assertEqual(getattr(notified, key), SOME_TWEET[key])
 
@@ -140,7 +140,7 @@ class TestTwitter(NIOBlockTestCase):
 
         self.assertGreater(self._router.get_signals_from_block(self._block), 0)
 
-        notified = self.signals[0]
+        notified = self.signals['default'][0]
 
         # Check that all desired fields accurately came through
         for key in desired_fields:
@@ -183,8 +183,7 @@ class TestTwitter(NIOBlockTestCase):
 
         limit_counts = [1234, 0, 2000-1234]
         for i in range(num_limits):
-            notified = self.signals[i]
-            print(notified)
+            notified = self.signals['limit'][i]
             for key in LIMIT_MSGS[i]:
                 self.assertEqual(getattr(notified, key), LIMIT_MSGS[i][key])
             self.assertEqual(getattr(notified, 'limit_count'), limit_counts[i])
@@ -203,7 +202,7 @@ class TestTwitter(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        notified = self.signals[0]
+        notified = self.signals['other'][0]
         for key in DIAG_MSG:
             self.assertEqual(getattr(notified, key), DIAG_MSG[key])
 
