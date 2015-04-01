@@ -72,12 +72,11 @@ class LimitTwitter(EventTwitter):
 
     def __init__(self, e, num_events):
         super().__init__(e)
-        self._e = e
         self._read_counter = 0
         self._num_events = num_events
 
     def _read_line(self):
-        self._read_counter = self._read_counter + 1
+        self._read_counter += 1
         if self._read_counter >= self._num_events:
             self._stop_event.set()
         return bytes(json.dumps(LIMIT_MSGS[self._read_counter-1]), 'utf-8')
@@ -184,9 +183,11 @@ class TestTwitter(NIOBlockTestCase):
         limit_counts = [1234, 0, 2000-1234]
         for i in range(num_limits):
             notified = self.signals['limit'][i]
-            for key in LIMIT_MSGS[i]:
-                self.assertEqual(getattr(notified, key), LIMIT_MSGS[i][key])
-            self.assertEqual(getattr(notified, 'limit_count'), limit_counts[i])
+            self.assertEqual(notified.cumulative_count,
+                             LIMIT_MSGS[i]['limit']['track'])
+            self.assertEqual(notified.limit,
+                             LIMIT_MSGS[i]['limit'])
+            self.assertEqual(getattr(notified, 'count'), limit_counts[i])
 
     def test_diagnostic_message(self):
         self._block = DiagnosticTwitter(self.e)
@@ -205,4 +206,3 @@ class TestTwitter(NIOBlockTestCase):
         notified = self.signals['other'][0]
         for key in DIAG_MSG:
             self.assertEqual(getattr(notified, key), DIAG_MSG[key])
-

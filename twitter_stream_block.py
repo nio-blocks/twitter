@@ -89,7 +89,6 @@ class TwitterStreamBlock(Block):
         self._stream = None
         self._last_rcv = datetime.utcnow()
         self._limit_count = 0
-        self._limit_lock = Lock()
 
         # Jobs to run throughout execution
         self._notify_job = None    # notifies signals
@@ -365,7 +364,8 @@ class TwitterStreamBlock(Block):
             self._limit_count = track
         else:
             limit = 0
-        data['limit_count'] = limit
+        data['count'] = limit
+        data['cumulative_count'] = track
 
 
     def filter_results(self, data):
@@ -376,8 +376,7 @@ class TwitterStreamBlock(Block):
         that have been buffered by the block, then clear the buffer.
 
         """
-        output_names = list(self._result_signals.keys())
-        for output in output_names:
+        for output in self._result_signals:
             with self._get_result_lock(output):
                 signals = self._result_signals[output]
                 if signals:
