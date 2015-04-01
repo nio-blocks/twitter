@@ -2,6 +2,7 @@ from .twitter_stream_block import TwitterStreamBlock
 from nio.common.discovery import Discoverable, DiscoverableType
 from nio.metadata.properties import ListProperty, SelectProperty,\
     ObjectProperty, PropertyHolder, FloatProperty
+from nio.metadata.properties.version import VersionProperty
 from requests_oauthlib import OAuth1
 import requests
 from enum import Enum
@@ -52,6 +53,8 @@ class Twitter(TwitterStreamBlock):
             or hearbeats) before attempting to reconnect to Twitter Streaming.
 
     """
+
+    version = VersionProperty(version='1.0.0', min_version='1.0.0')
     phrases = ListProperty(str, title='Query Phrases')
     follow = ListProperty(str, title='Follow Users')
     fields = ListProperty(str, title='Included Fields')

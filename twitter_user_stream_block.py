@@ -1,6 +1,7 @@
 from .twitter_stream_block import TwitterStreamBlock
 from nio.common.discovery import Discoverable, DiscoverableType
 from nio.metadata.properties import BoolProperty
+from nio.metadata.properties.version import VersionProperty
 
 
 @Discoverable(DiscoverableType.block)
@@ -18,6 +19,7 @@ class TwitterUserStream(TwitterStreamBlock):
 
     """
 
+    version = VersionProperty(version='1.0.0', min_version='1.0.0')
     only_user = BoolProperty(title="Only User Information", default=True)
     show_friends = BoolProperty(title="Include Friends List", default=False)
 
