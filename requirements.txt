@@ -1,0 +1,3 @@
+requests
+requests_oauthlib
+https://github.com/tseaver/python-oauth2/archive/py3.zip
