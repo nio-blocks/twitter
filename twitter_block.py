@@ -1,11 +1,40 @@
 from .twitter_stream_block import TwitterStreamBlock
 from nio.common.discovery import Discoverable, DiscoverableType
+from nio.common.signal.base import Signal
+from nio.common.block.attribute import Output
 from nio.metadata.properties import ListProperty, SelectProperty,\
-    ObjectProperty, PropertyHolder, FloatProperty
-from nio.metadata.properties.version import VersionProperty
+    ObjectProperty, PropertyHolder, FloatProperty, VersionProperty
+from nio.common.versioning.dependency import DependsOn
 from requests_oauthlib import OAuth1
 import requests
 from enum import Enum
+
+
+PUB_STREAM_MSGS = {
+    'limit': "Limit",
+    'delete': "Deletion",
+    'scrub_geo': "Location Deletion",
+    'status_witheld': "Status Witheld",
+    'user_witheld': "User Witheld",
+    'disconnect': "Disconnect",
+    'warning': "Stall Warning"
+}
+
+
+DISCONNECT_REASONS = [
+    "Shutdown",
+    "Duplicate stream",
+    "Control request",
+    "Stall",
+    "Normal",
+    "Token revoked",
+    "Admin revoked",
+    '',
+    "Max message limit",
+    "Stream exception",
+    "Broker stall",
+    "Shed load"
+]
 
 
 class FilterLevel(Enum):
@@ -28,6 +57,10 @@ class Location(PropertyHolder):
                                title='Northeast')
 
 
+@Output("other")
+@Output("limit")
+@Output("tweets")
+@DependsOn("nio", "1.5.2")
 @Discoverable(DiscoverableType.block)
 class Twitter(TwitterStreamBlock):
 
@@ -54,7 +87,7 @@ class Twitter(TwitterStreamBlock):
 
     """
 
-    version = VersionProperty(version='1.0.0', min_version='1.0.0')
+    version = VersionProperty(version='2.0.0', min_version='2.0.0')
     phrases = ListProperty(str, title='Query Phrases')
     follow = ListProperty(str, title='Follow Users')
     fields = ListProperty(str, title='Included Fields')
@@ -135,3 +168,50 @@ class Twitter(TwitterStreamBlock):
                 self._logger.error("Invalid Twitter field: %s" % f)
 
         return result
+
+    def create_signal(self, data):
+        for msg in PUB_STREAM_MSGS:
+            if data and msg in data:
+
+                # Log something about the message
+                report = "{} notice".format(PUB_STREAM_MSGS[msg])
+                if msg == "disconnect":
+                    error_idx = int(data['disconnect']['code']) - 1
+                    report += ": {}".format(DISCONNECT_REASONS[error_idx])
+                elif msg == "warning":
+                    report += ": {}".format(data['message'])
+                self._logger.debug(report)
+
+                # Calculate total limit for limit signals
+                if msg == "limit":
+                    # lock when calculating limit
+                    with self._get_result_lock('limit'):
+                        self._calculate_limit(data)
+
+                # Anything that is not 'limit' or 'tweet' is considered 'other'
+                if msg != "limit":
+                    msg = "other"
+
+                # Add a signal to the appropriate list
+                with self._get_result_lock(msg):
+                    self._result_signals[msg].append(Signal(data))
+
+                return
+
+        # If we didn't return yet, the message is a regular tweet.
+        self._logger.debug("It's a tweet!")
+        data = self.filter_results(data)
+        if data:
+            with self._get_result_lock('tweets'):
+                self._result_signals['tweets'].append(Signal(data))
+
+    def _calculate_limit(self, data):
+        """ Calculate total limit count for limit signals """
+        track = data.get('limit', {}).get('track', 0)
+        if track > self._limit_count:
+            limit = track - self._limit_count
+            self._limit_count = track
+        else:
+            limit = 0
+        data['count'] = limit
+        data['cumulative_count'] = track

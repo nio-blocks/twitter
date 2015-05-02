@@ -1,9 +1,13 @@
 from .twitter_stream_block import TwitterStreamBlock
+from nio.common.signal.base import Signal
+from nio.common.block.attribute import Output
 from nio.common.discovery import Discoverable, DiscoverableType
-from nio.metadata.properties import BoolProperty
-from nio.metadata.properties.version import VersionProperty
+from nio.metadata.properties import BoolProperty, VersionProperty
+from nio.common.versioning.dependency import DependsOn
 
-
+@Output("other")
+@Output("events")
+@DependsOn("nio", "1.5.2")
 @Discoverable(DiscoverableType.block)
 class TwitterUserStream(TwitterStreamBlock):
 
@@ -19,7 +23,7 @@ class TwitterUserStream(TwitterStreamBlock):
 
     """
 
-    version = VersionProperty(version='1.0.0', min_version='1.0.0')
+    version = VersionProperty(version='2.0.0', min_version='2.0.0')
     only_user = BoolProperty(title="Only User Information", default=True)
     show_friends = BoolProperty(title="Include Friends List", default=False)
 
@@ -47,3 +51,15 @@ class TwitterUserStream(TwitterStreamBlock):
             return None
 
         return data
+
+    def create_signal(self, data):
+        if data and 'event' in data:
+            self._logger.debug('Event message')
+            with self._get_result_lock('events'):
+                self._result_signals['events'].append(Signal(data))
+        else:
+            self._logger.debug('Other message')
+            data = self.filter_results(data)
+            if data:
+                with self._get_result_lock('other'):
+                    self._result_signals['other'].append(Signal(data))
