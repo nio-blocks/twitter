@@ -119,9 +119,7 @@ class TestTwitter(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        self.assertGreater(self._router.get_signals_from_block(self._block), 0)
-
-        notified = self.signals['default'][0]
+        notified = self.signals['tweets'][0]
         for key in SOME_TWEET:
             self.assertEqual(getattr(notified, key), SOME_TWEET[key])
 
@@ -137,9 +135,7 @@ class TestTwitter(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        self.assertGreater(self._router.get_signals_from_block(self._block), 0)
-
-        notified = self.signals['default'][0]
+        notified = self.signals['tweets'][0]
 
         # Check that all desired fields accurately came through
         for key in desired_fields:

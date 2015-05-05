@@ -7,39 +7,11 @@ import time
 from collections import defaultdict
 from requests_oauthlib import OAuth1
 from nio.common.block.base import Block
-from nio.common.block.attribute import Output
 from nio.metadata.properties import PropertyHolder, TimeDeltaProperty, \
     ObjectProperty, StringProperty
 from nio.modules.scheduler import Job
 from nio.common.signal.base import Signal
 from nio.modules.threading import Lock, spawn, Event
-
-
-PUB_STREAM_MSGS = {
-    'limit': "Limit",
-    'delete': "Deletion",
-    'scrub_geo': "Location Deletion",
-    'status_witheld': "Status Witheld",
-    'user_witheld': "User Witheld",
-    'disconnect': "Disconnect",
-    'warning': "Stall Warning"
-}
-
-
-DISCONNECT_REASONS = [
-    "Shutdown",
-    "Duplicate stream",
-    "Control request",
-    "Stall",
-    "Normal",
-    "Token revoked",
-    "Admin revoked",
-    '',
-    "Max message limit",
-    "Stream exception",
-    "Broker stall",
-    "Shed load"
-]
 
 
 class TwitterCreds(PropertyHolder):
@@ -53,8 +25,6 @@ class TwitterCreds(PropertyHolder):
     oauth_token_secret = StringProperty(title='Access Token Secret', default="[[TWITTER_ACCESS_TOKEN_SECRET]]")
 
 
-@Output("other")
-@Output("limit")
 class TwitterStreamBlock(Block):
 
     """ A parent block for communicating with the Twitter Streaming API.
@@ -313,60 +283,27 @@ class TwitterStreamBlock(Block):
         try:
             # reset the last received timestamp
             self._last_rcv = datetime.utcnow()
-
             data = json.loads(line.decode('utf-8'))
-            # don't output 'limit' and 'delete' messages from twitter as
-            # signals. For now just ignore them. When we have multiple block
-            # outputs, they will be notified on different outputs.
-            for msg in PUB_STREAM_MSGS:
-                if data and msg in data:
-
-                    # Log something about the message
-                    report = "{} notice".format(PUB_STREAM_MSGS[msg])
-                    if msg == "disconnect":
-                        error_idx = int(data['disconnect']['code']) - 1
-                        report += ": {}".format(DISCONNECT_REASONS[error_idx])
-                    elif msg == "warning":
-                        report += ": {}".format(data['message'])
-                    self._logger.debug(report)
-
-                    # Calculate total limit for limit signals
-                    if msg == "limit":
-                        # lock when calculating limit
-                        with self._get_result_lock('limit'):
-                            self._calculate_limit(data)
-
-                    # Add a signal to the appropriate list
-                    with self._get_result_lock(msg):
-                        self._result_signals[msg].append(Signal(data))
-
-                    return
-
-            # If we didn't return yet, the message is a regular tweet.
-            self._logger.debug("It's a tweet!")
-            data = self.filter_results(data)
-            if data:
-                with self._get_result_lock('default'):
-                    self._result_signals['default'].append(Signal(data))
-
+            self.create_signal(data)
         except Exception as e:
             self._logger.error("Could not parse line: %s" % str(e))
+
+    def create_signal(self, data):
+        """ Override this method in the block implementation
+
+        Append the new Signal to appropriate list in the dictionary
+        `self._result_signals`, where the key is the name of the block output.
+        Below is an example implementation, meant to be overridden.
+        """
+        self._logger.debug("Default message type")
+        data = self.filter_results(data)
+        if data:
+            with self._get_result_lock('default'):
+                self._result_signals['default'].append(Signal(data))
 
     def _get_result_lock(self, key):
         with self._lock_lock:
             return self._result_lock[key]
-
-    def _calculate_limit(self, data):
-        """ Calculate total limit count for limit signals """
-        track = data.get('limit', {}).get('track', 0)
-        if track > self._limit_count:
-            limit = track - self._limit_count
-            self._limit_count = track
-        else:
-            limit = 0
-        data['count'] = limit
-        data['cumulative_count'] = track
-
 
     def filter_results(self, data):
         return data
@@ -380,9 +317,7 @@ class TwitterStreamBlock(Block):
             with self._get_result_lock(output):
                 signals = self._result_signals[output]
                 if signals:
-                    output_id = output \
-                        if output in ['default', 'limit'] else 'other'
-                    self.notify_signals(signals, output_id)
+                    self.notify_signals(signals, output)
                     self._result_signals[output] = []
 
     def _monitor_connection(self):
