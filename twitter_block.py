@@ -110,10 +110,10 @@ class Twitter(TwitterStreamBlock):
     def _set_user_ids(self):
         if len(self.follow()) == 0:
             return
-        auth = OAuth1(self.creds.consumer_key,
-                      self.creds.app_secret,
-                      self.creds.oauth_token,
-                      self.creds.oauth_token_secret)
+        auth = OAuth1(self.creds().consumer_key(),
+                      self.creds().app_secret(),
+                      self.creds().oauth_token(),
+                      self.creds().oauth_token_secret())
         # user ids can be grabbed 100 at a time.
         for i in range(0, len(self.follow()), 100):
             data = {"screen_name": ','.join(self.follow()[i:i+100])}

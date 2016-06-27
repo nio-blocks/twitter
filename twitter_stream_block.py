@@ -272,9 +272,9 @@ class TwitterStreamBlock(Block):
         req.sign_request(
             signature_method=oauth.SignatureMethod_HMAC_SHA1(),
             consumer=oauth.Consumer(
-                self.creds.consumer_key, self.creds.app_secret),
+                self.creds().consumer_key(), self.creds().app_secret()),
             token=oauth.Token(
-                self.creds.oauth_token, self.creds.oauth_token_secret)
+                self.creds().oauth_token(), self.creds().oauth_token_secret())
         )
 
         return req
@@ -337,13 +337,13 @@ class TwitterStreamBlock(Block):
 
         """
         try:
-            auth = OAuth1(self.creds.consumer_key,
-                          self.creds.app_secret,
-                          self.creds.oauth_token,
-                          self.creds.oauth_token_secret)
+            auth = OAuth1(self.creds().consumer_key(),
+                          self.creds().app_secret(),
+                          self.creds().oauth_token(),
+                          self.creds().oauth_token_secret())
             resp = requests.get(self.verify_url, auth=auth)
             if resp.status_code != 200:
                 raise Exception("Status %s" % resp.status_code)
         except Exception:
-            self.logger.error("Authentication Failed for consumer key: %s" %
-                               self.creds.consumer_key)
+            self.logger.exception("Authentication Failed for consumer key: %s" %
+                                  self.creds().consumer_key())
