@@ -1,10 +1,10 @@
 from .twitter_stream_block import TwitterStreamBlock
-from nio.common.discovery import Discoverable, DiscoverableType
-from nio.common.signal.base import Signal
-from nio.common.block.attribute import Output
-from nio.metadata.properties import ListProperty, SelectProperty,\
+from nio.util.discovery import discoverable
+from nio.signal.base import Signal
+from nio.block.terminals import output
+from nio.properties import ListProperty, SelectProperty,\
     ObjectProperty, PropertyHolder, FloatProperty, VersionProperty
-from nio.common.versioning.dependency import DependsOn
+from nio.types.string import StringType
 from requests_oauthlib import OAuth1
 import requests
 from enum import Enum
@@ -57,11 +57,10 @@ class Location(PropertyHolder):
                                title='Northeast')
 
 
-@Output("other")
-@Output("limit")
-@Output("tweets")
-@DependsOn("nio", "1.5.2")
-@Discoverable(DiscoverableType.block)
+@output("other")
+@output("limit")
+@output("tweets")
+@discoverable
 class Twitter(TwitterStreamBlock):
 
     """ A block for communicating with the Twitter Streaming API.
@@ -88,14 +87,14 @@ class Twitter(TwitterStreamBlock):
     """
 
     version = VersionProperty(version='2.0.0', min_version='2.0.0')
-    phrases = ListProperty(str, title='Query Phrases')
-    follow = ListProperty(str, title='Follow Users')
-    fields = ListProperty(str, title='Included Fields')
-    language = ListProperty(str, default=['en'], title='Language')
+    phrases = ListProperty(StringType, default=[], title='Query Phrases')
+    follow = ListProperty(StringType, default=[], title='Follow Users')
+    fields = ListProperty(StringType, default=[], title='Included Fields')
+    language = ListProperty(StringType, default=['en'], title='Language')
     filter_level = SelectProperty(FilterLevel,
                                   default=FilterLevel.none,
                                   title='Filter Level')
-    locations = ListProperty(Location, title='Locations')
+    locations = ListProperty(Location, default=[], title='Locations')
 
     streaming_host = 'stream.twitter.com'
     streaming_endpoint = '1.1/statuses/filter.json'
@@ -109,15 +108,15 @@ class Twitter(TwitterStreamBlock):
         self._set_user_ids()
 
     def _set_user_ids(self):
-        if len(self.follow) == 0:
+        if len(self.follow()) == 0:
             return
         auth = OAuth1(self.creds.consumer_key,
                       self.creds.app_secret,
                       self.creds.oauth_token,
                       self.creds.oauth_token_secret)
         # user ids can be grabbed 100 at a time.
-        for i in range(0, len(self.follow), 100):
-            data = {"screen_name": ','.join(self.follow[i:i+100])}
+        for i in range(0, len(self.follow()), 100):
+            data = {"screen_name": ','.join(self.follow()[i:i+100])}
             resp = requests.post(self.users_endpoint,
                                 data=data,
                                 auth=auth)
@@ -126,25 +125,25 @@ class Twitter(TwitterStreamBlock):
                     id = user.get('id_str')
                     if id is not None:
                         self._user_ids.append(id)
-        self._logger.debug("Following {} users".format(len(self._user_ids)))
+        self.logger.debug("Following {} users".format(len(self._user_ids)))
 
     def get_params(self):
         params = {
             'stall_warnings': 'true',
             'delimited': 'length',
-            'track': ','.join(self.phrases),
+            'track': ','.join(self.phrases()),
             'follow': ','.join(self._user_ids),
-            'filter_level': self.filter_level.name
+            'filter_level': self.filter_level().name
         }
-        if self.language:
-            params['language'] = ','.join(self.language)
-        if self.locations:
+        if self.language():
+            params['language'] = ','.join(self.language())
+        if self.locations():
             locations = []
-            for location in self.locations:
-                locations.append(str(location.southwest.longitude))
-                locations.append(str(location.southwest.latitude))
-                locations.append(str(location.northeast.longitude))
-                locations.append(str(location.northeast.latitude))
+            for location in self.locations():
+                locations.append(str(location.southwest().longitude()))
+                locations.append(str(location.southwest().latitude()))
+                locations.append(str(location.northeast().longitude()))
+                locations.append(str(location.northeast().latitude()))
             params['locations'] = ','.join(locations)
         return params
 
@@ -157,15 +156,15 @@ class Twitter(TwitterStreamBlock):
 
         """
         # If they did not specify which fields, just give them everything
-        if not self.fields or len(self.fields) == 0:
+        if not self.fields() or len(self.fields()) == 0:
             return data
 
         result = {}
-        for f in self.fields:
+        for f in self.fields():
             try:
                 result[f] = data[f]
             except:
-                self._logger.error("Invalid Twitter field: %s" % f)
+                self.logger.error("Invalid Twitter field: %s" % f)
 
         return result
 
@@ -180,7 +179,7 @@ class Twitter(TwitterStreamBlock):
                     report += ": {}".format(DISCONNECT_REASONS[error_idx])
                 elif msg == "warning":
                     report += ": {}".format(data['message'])
-                self._logger.debug(report)
+                self.logger.debug(report)
 
                 # Calculate total limit for limit signals
                 if msg == "limit":
@@ -199,7 +198,7 @@ class Twitter(TwitterStreamBlock):
                 return
 
         # If we didn't return yet, the message is a regular tweet.
-        self._logger.debug("It's a tweet!")
+        self.logger.debug("It's a tweet!")
         data = self.filter_results(data)
         if data:
             with self._get_result_lock('tweets'):

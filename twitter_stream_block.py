@@ -6,12 +6,13 @@ from datetime import timedelta, datetime
 import time
 from collections import defaultdict
 from requests_oauthlib import OAuth1
-from nio.common.block.base import Block
-from nio.metadata.properties import PropertyHolder, TimeDeltaProperty, \
+from nio.block.base import Block
+from nio.properties import PropertyHolder, TimeDeltaProperty, \
     ObjectProperty, StringProperty
 from nio.modules.scheduler import Job
-from nio.common.signal.base import Signal
-from nio.modules.threading import Lock, spawn, Event
+from nio.signal.base import Signal
+from threading import Lock, Event
+from nio.util.threading.spawn import spawn
 
 
 class TwitterCreds(PropertyHolder):
@@ -73,7 +74,7 @@ class TwitterStreamBlock(Block):
         spawn(self._run_stream)
         self._notify_job = Job(
             self._notify_results,
-            self.notify_freq,
+            self.notify_freq(),
             True
         )
 
@@ -119,7 +120,7 @@ class TwitterStreamBlock(Block):
             except Exception as e:
                 # Error while getting the tweet, this probably indicates a
                 # disconnection so let's try to reconnect
-                self._logger.error("While streaming: %s" % str(e))
+                self.logger.error("While streaming: %s" % str(e))
                 self._setup_reconnect_attempt()
                 break
 
@@ -149,7 +150,7 @@ class TwitterStreamBlock(Block):
         # checking to see if it's a 'keep-alive'
         if len(buf) <= 2:
             # only recieved \r\n so it is a keep-alive. move on.
-            self._logger.debug('Received a keep-alive signal from Twitter.')
+            self.logger.debug('Received a keep-alive signal from Twitter.')
             self._last_rcv = datetime.utcnow()
             return None
 
@@ -197,7 +198,7 @@ class TwitterStreamBlock(Block):
             # get the signed request with the proper oauth creds
             req = self._get_oauth_request(conn_url, self.get_params())
 
-            self._logger.debug("Connecting to {0}".format(conn_url))
+            self.logger.debug("Connecting to {0}".format(conn_url))
 
             if self.get_request_method() == "POST":
                 self._conn.request(self.get_request_method(),
@@ -212,16 +213,16 @@ class TwitterStreamBlock(Block):
             response = self._conn.getresponse()
 
             if response.status != 200:
-                self._logger.warning(
+                self.logger.warning(
                     'Status: {} returned from twitter: {}'.format(
                         response.status, response.read()))
                 return False
             else:
-                self._logger.debug('Connected to Streaming API Successfully')
+                self.logger.debug('Connected to Streaming API Successfully')
 
                 # Clear any reconnects we had
                 if self._rc_job is not None:
-                    self._logger.error("We were reconnecting, now we're done!")
+                    self.logger.error("We were reconnecting, now we're done!")
                     self._rc_job.cancel()
                     self._rc_delay = timedelta(seconds=1)
                     self._rc_job = None
@@ -230,7 +231,7 @@ class TwitterStreamBlock(Block):
 
                 self._monitor_job = Job(
                     self._monitor_connection,
-                    self.rc_interval,
+                    self.rc_interval(),
                     True
                 )
 
@@ -239,7 +240,7 @@ class TwitterStreamBlock(Block):
                 return True
 
         except Exception as e:
-            self._logger.error('Error opening connection : {0}'.format(e))
+            self.logger.error('Error opening connection : {0}'.format(e))
             return False
 
     def _setup_reconnect_attempt(self):
@@ -247,7 +248,7 @@ class TwitterStreamBlock(Block):
         if self._monitor_job is not None:
             self._monitor_job.cancel()
 
-        self._logger.debug("Reconnecting in %d seconds" %
+        self.logger.debug("Reconnecting in %d seconds" %
                            self._rc_delay.total_seconds())
         self._rc_job = Job(self._run_stream,
                            self._rc_delay, False)
@@ -286,7 +287,7 @@ class TwitterStreamBlock(Block):
             data = json.loads(line.decode('utf-8'))
             self.create_signal(data)
         except Exception as e:
-            self._logger.error("Could not parse line: %s" % str(e))
+            self.logger.error("Could not parse line: %s" % str(e))
 
     def create_signal(self, data):
         """ Override this method in the block implementation
@@ -295,7 +296,7 @@ class TwitterStreamBlock(Block):
         `self._result_signals`, where the key is the name of the block output.
         Below is an example implementation, meant to be overridden.
         """
-        self._logger.debug("Default message type")
+        self.logger.debug("Default message type")
         data = self.filter_results(data)
         if data:
             with self._get_result_lock('default'):
@@ -327,8 +328,8 @@ class TwitterStreamBlock(Block):
         """
         current_time = datetime.utcnow()
         time_since_data = current_time - self._last_rcv
-        if time_since_data > self.rc_interval:
-            self._logger.warning("No data received, we might be disconnected")
+        if time_since_data > self.rc_interval():
+            self.logger.warning("No data received, we might be disconnected")
             self._setup_reconnect_attempt()
 
     def _authorize(self):
@@ -344,5 +345,5 @@ class TwitterStreamBlock(Block):
             if resp.status_code != 200:
                 raise Exception("Status %s" % resp.status_code)
         except Exception:
-            self._logger.error("Authentication Failed for consumer key: %s" %
+            self.logger.error("Authentication Failed for consumer key: %s" %
                                self.creds.consumer_key)
