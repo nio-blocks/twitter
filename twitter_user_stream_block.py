@@ -1,14 +1,13 @@
 from .twitter_stream_block import TwitterStreamBlock
-from nio.common.signal.base import Signal
-from nio.common.block.attribute import Output
-from nio.common.discovery import Discoverable, DiscoverableType
-from nio.metadata.properties import BoolProperty, VersionProperty
-from nio.common.versioning.dependency import DependsOn
+from nio.signal.base import Signal
+from nio.block.terminals import output
+from nio.util.discovery import discoverable
+from nio.properties import BoolProperty, VersionProperty
 
-@Output("other")
-@Output("events")
-@DependsOn("nio", "1.5.2")
-@Discoverable(DiscoverableType.block)
+
+@output("other")
+@output("events")
+@discoverable
 class TwitterUserStream(TwitterStreamBlock):
 
     """ A block for communicating with the User Twitter Streaming API.
@@ -54,11 +53,11 @@ class TwitterUserStream(TwitterStreamBlock):
 
     def create_signal(self, data):
         if data and 'event' in data:
-            self._logger.debug('Event message')
+            self.logger.debug('Event message')
             with self._get_result_lock('events'):
                 self._result_signals['events'].append(Signal(data))
         else:
-            self._logger.debug('Other message')
+            self.logger.debug('Other message')
             data = self.filter_results(data)
             if data:
                 with self._get_result_lock('other'):

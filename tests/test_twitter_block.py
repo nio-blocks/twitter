@@ -1,9 +1,8 @@
 from ..twitter_block import Twitter
 import json
 from unittest.mock import MagicMock
-from nio.util.support.block_test_case import NIOBlockTestCase
-from nio.configuration.settings import Settings
-from nio.modules.threading import Event
+from nio.testing.block_test_case import NIOBlockTestCase
+from threading import Event
 
 
 SOME_TWEET = {
@@ -91,13 +90,8 @@ class DiagnosticTwitter(EventTwitter):
 
 class TestTwitter(NIOBlockTestCase):
 
-    def signals_notified(self, signals, output_id='default'):
-        self.signals[output_id] = signals
-
     def setUp(self):
         super().setUp()
-        # Settings.import_file()
-        self.signals = {}
 
         # initialize a block that won't actually talk to Twitter
         self.e = Event()
@@ -119,7 +113,7 @@ class TestTwitter(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        notified = self.signals['tweets'][0]
+        notified = self.last_notified['tweets'][0]
         for key in SOME_TWEET:
             self.assertEqual(getattr(notified, key), SOME_TWEET[key])
 
@@ -135,7 +129,7 @@ class TestTwitter(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        notified = self.signals['tweets'][0]
+        notified = self.last_notified['tweets'][0]
 
         # Check that all desired fields accurately came through
         for key in desired_fields:
@@ -178,7 +172,7 @@ class TestTwitter(NIOBlockTestCase):
 
         limit_counts = [1234, 0, 2000-1234]
         for i in range(num_limits):
-            notified = self.signals['limit'][i]
+            notified = self.last_notified['limit'][i]
             self.assertEqual(notified.cumulative_count,
                              LIMIT_MSGS[i]['limit']['track'])
             self.assertEqual(notified.limit,
@@ -199,6 +193,6 @@ class TestTwitter(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        notified = self.signals['other'][0]
+        notified = self.last_notified['other'][0]
         for key in DIAG_MSG:
             self.assertEqual(getattr(notified, key), DIAG_MSG[key])

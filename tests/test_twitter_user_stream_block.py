@@ -1,9 +1,8 @@
 from ..twitter_user_stream_block import TwitterUserStream
 import json
 from unittest.mock import MagicMock
-from nio.util.support.block_test_case import NIOBlockTestCase
-from nio.configuration.settings import Settings
-from nio.modules.threading import Event
+from nio.testing.block_test_case import NIOBlockTestCase
+from threading import Event
 
 
 EVENTS_MSG = {
@@ -44,12 +43,8 @@ class DiagnosticTwitter(EventTwitter):
 
 class TestTwitterUserStream(NIOBlockTestCase):
 
-    def signals_notified(self, signals, output_id='default'):
-        self.signals[output_id] = signals
-
     def setUp(self):
         super().setUp()
-        # Settings.import_file()
         self.signals = {}
 
         # initialize a block that won't actually talk to Twitter
@@ -72,7 +67,7 @@ class TestTwitterUserStream(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        notified = self.signals['events'][0]
+        notified = self.last_notified['events'][0]
         for key in EVENTS_MSG:
             self.assertEqual(getattr(notified, key), EVENTS_MSG[key])
 
@@ -90,6 +85,6 @@ class TestTwitterUserStream(NIOBlockTestCase):
         self.e.wait(1)
         self._block._notify_results()
 
-        notified = self.signals['other'][0]
+        notified = self.last_notified['other'][0]
         for key in DIAG_MSG:
             self.assertEqual(getattr(notified, key), DIAG_MSG[key])
