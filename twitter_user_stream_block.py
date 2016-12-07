@@ -4,6 +4,7 @@ from nio.block.terminals import output
 from nio.util.discovery import discoverable
 from nio.properties import BoolProperty, VersionProperty
 
+
 @output("other")
 @output("events")
 @discoverable

@@ -1,18 +1,20 @@
-import requests
-import json
-import oauth2 as oauth
 import http.client
-from datetime import timedelta, datetime
+import json
 import time
 from collections import defaultdict
-from requests_oauthlib import OAuth1
+from datetime import timedelta, datetime
+from threading import Lock, Event
+import oauth2 as oauth
+import requests
+
 from nio.block.base import Block
+from nio.modules.scheduler import Job
 from nio.properties import PropertyHolder, TimeDeltaProperty, \
     ObjectProperty, StringProperty
-from nio.modules.scheduler import Job
 from nio.signal.base import Signal
-from threading import Lock, Event
+from nio.util.discovery import not_discoverable
 from nio.util.threading.spawn import spawn
+from requests_oauthlib import OAuth1
 
 
 class TwitterCreds(PropertyHolder):
@@ -26,6 +28,7 @@ class TwitterCreds(PropertyHolder):
     oauth_token_secret = StringProperty(title='Access Token Secret', default="[[TWITTER_ACCESS_TOKEN_SECRET]]")
 
 
+@not_discoverable
 class TwitterStreamBlock(Block):
 
     """ A parent block for communicating with the Twitter Streaming API.
