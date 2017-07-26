@@ -2,6 +2,7 @@ from ..twitter_block import Twitter
 import json
 from unittest.mock import MagicMock
 from nio.testing.block_test_case import NIOBlockTestCase
+from nio.util.discovery import not_discoverable
 from threading import Event
 
 
@@ -49,6 +50,7 @@ DIAG_MSG = {
 }
 
 
+@not_discoverable
 class EventTwitter(Twitter):
 
     def __init__(self, e):
@@ -60,6 +62,7 @@ class EventTwitter(Twitter):
         self._e.set()
 
 
+@not_discoverable
 class TweetTwitter(EventTwitter):
 
     def _read_line(self):
@@ -67,6 +70,7 @@ class TweetTwitter(EventTwitter):
         return bytes(json.dumps(SOME_TWEET), 'utf-8')
 
 
+@not_discoverable
 class LimitTwitter(EventTwitter):
 
     def __init__(self, e, num_events):
@@ -81,6 +85,7 @@ class LimitTwitter(EventTwitter):
         return bytes(json.dumps(LIMIT_MSGS[self._read_counter-1]), 'utf-8')
 
 
+@not_discoverable
 class DiagnosticTwitter(EventTwitter):
 
     def _read_line(self):
