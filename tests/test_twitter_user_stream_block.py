@@ -2,6 +2,7 @@ from ..twitter_user_stream_block import TwitterUserStream
 import json
 from unittest.mock import MagicMock
 from nio.testing.block_test_case import NIOBlockTestCase
+from nio.util.discovery import not_discoverable
 from threading import Event
 
 
@@ -18,6 +19,7 @@ DIAG_MSG = {
 }
 
 
+@not_discoverable
 class EventTwitter(TwitterUserStream):
 
     def __init__(self, e):
@@ -29,12 +31,14 @@ class EventTwitter(TwitterUserStream):
         self._e.set()
 
 
+@not_discoverable
 class EventsTwitter(EventTwitter):
 
     def _read_line(self):
         return bytes(json.dumps(EVENTS_MSG), 'utf-8')
 
 
+@not_discoverable
 class DiagnosticTwitter(EventTwitter):
 
     def _read_line(self):
