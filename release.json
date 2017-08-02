@@ -1,12 +1,12 @@
 {
-  "nio/TwitterUserStream": {
-    "Language": "Python",
-    "Reference": "github.com/nio-blocks/twitter.git@v1.0.0",
-    "Version": "1.0.0"
-  },
   "nio/Twitter": {
-    "Language": "Python",
-    "Reference": "github.com/nio-blocks/twitter.git@v1.0.0",
-    "Version": "1.0.0"
+    "language": "Python",
+    "version": "0.0.1",
+    "reference": "github.com/nio-blocks/twitter.git@v0.0.1"
+  },
+  "nio/TwitterUserStream": {
+    "language": "Python",
+    "version": "0.0.1",
+    "reference": "github.com/nio-blocks/twitter.git@v0.0.1"
   }
 }

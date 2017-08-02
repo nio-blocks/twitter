@@ -1,62 +1,18 @@
 {
-    "nio/TwitterUserStream": {
-        "Properties": {
-            "rc_interval": {
-                "description": "How often to check that the stream is still alive."
-            },
-            "show_friends": {
-                "description": "Upon establishing a User Stream, Twitter will send a list of the user's friends. If True, include that an as output signal. The signal will contain a friends attribute that is a list of user ids."
-            },
-            "creds": {
-                "description": "Twitter API credentials."
-            },
-            "only_user": {
-                "description": "When True, only events about the authenticated user are included. When False, data about the user and about the user's following are included."
-            },
-            "notify_freq": {
-                "description": "Frequency at which tweets are notified from the block."
-            }
-        },
-        "Description": "Notifies signals from the [Twitter User Stream API](https://dev.twitter.com/streaming/userstreams).",
-        "Input": {
-            "Description": "None"
-        },
-        "Commands": {},
-        "Version": "1.0.0",
-        "Output": {
-            "Description": "Creates a new signal for each user streaming [message](https://dev.twitter.com/streaming/overview/messages-types)."
-        },
-        "Category": "WebService"
-    },
-    "nio/Twitter": {
-        "Properties": {
-            "rc_interval": {
-                "description": "How often to check that the stream is still alive."
-            },
-            "fields": {
-                "https": "//dev.twitter.com/docs/platform-objects/tweets",
-                "description": "Tweet fields to notify on the signal. If unspecified, all fields from tweets will be notified. List of fields [here]."
-            },
-            "creds": {
-                "description": "Twitter API credentials."
-            },
-            "notify_freq": {
-                "description": "Frequency at which tweets are notified from the block."
-            },
-            "phrases": {
-                "i.e.": "quoted",
-                "description": "List of phrases to match against tweets. The tweet's text, expanded\\_url, display\\_url and screen\\_name are checked for matches. Exact matching of phrases  is not supported. Official documentation on phrase matching can be found [here](https://dev.twitter.com/docs/streaming-apis/parameters#track) and [here](https://dev.twitter.com/docs/streaming-apis/keyword-matching)."
-            }
-        },
-        "Description": "Notifies signals from tweets returned by the [Twitter Public Stream API](https://dev.twitter.com/docs/api/1.1/post/statuses/filter).",
-        "Input": {
-            "Description": "None"
-        },
-        "Commands": {},
-        "Version": "1.0.0",
-        "Output": {
-            "Description": "### default\nCreates a new signal for each matching Tweet. Official documentation of fields of a tweet can be found [here](https://dev.twitter.com/docs/platform-objects/tweets). The following is a list of commonly include attributes, but note that not all will be included on every signal:\n-   user['scree\\_name']\n-   id (and id_str)\n-   text\n-   user['description']\n-   user['profile\\_image\\_url']\n### limit\nNotifies a signal for each [limit notice](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) recieved from Twitter.\n-   count - Current amount limited\n-   cumulative_count - Total amount limited since connected was made to Twitter.\n-   limit - The raw message received from Twitter.\n```\n{\n\"count\": 42,\n\"cumulative_count\": 314,\n\"limit\": {\n\"track\": 314\n}\n}\n```\n### other\nNotifies a signal for any [other message types](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) received from Twitter."
-        },
-        "Category": "WebService"
-    }
+  "nio/Twitter": {
+    "version": "0.0.1",
+    "description": "",
+    "inputs": {},
+    "outputs": {},
+    "properties": {},
+    "commands": {}
+  },
+  "nio/TwitterUserStream": {
+    "version": "0.0.1",
+    "description": "",
+    "inputs": {},
+    "outputs": {},
+    "properties": {},
+    "commands": {}
+  }
 }
