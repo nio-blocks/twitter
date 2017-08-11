@@ -43,7 +43,7 @@ Output
 ### default
 Creates a new signal for each matching Tweet. Official documentation of fields of a tweet can be found [here](https://dev.twitter.com/docs/platform-objects/tweets). The following is a list of commonly include attributes, but note that not all will be included on every signal:
 
--   user['scree\_name']
+-   user['screen\_name']
 -   id (and id_str)
 -   text
 -   user['description']
