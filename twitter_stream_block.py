@@ -11,7 +11,7 @@ from requests_oauthlib import OAuth1
 from nio import GeneratorBlock
 from nio.modules.scheduler import Job
 from nio.properties import PropertyHolder, TimeDeltaProperty, \
-    ObjectProperty, StringProperty, VersionProperty
+    ObjectProperty, StringProperty
 from nio.signal.base import Signal
 from nio.util.discovery import not_discoverable
 from nio.util.threading.spawn import spawn
