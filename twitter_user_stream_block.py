@@ -1,13 +1,12 @@
-from .twitter_stream_block import TwitterStreamBlock
 from nio.signal.base import Signal
 from nio.block.terminals import output
-from nio.util.discovery import discoverable
 from nio.properties import BoolProperty, VersionProperty
+
+from .twitter_stream_block import TwitterStreamBlock
 
 
 @output("other")
 @output("events")
-@discoverable
 class TwitterUserStream(TwitterStreamBlock):
 
     """ A block for communicating with the User Twitter Streaming API.
@@ -22,7 +21,7 @@ class TwitterUserStream(TwitterStreamBlock):
 
     """
 
-    version = VersionProperty(version='2.0.0', min_version='2.0.0')
+    version = VersionProperty('2.0.0')
     only_user = BoolProperty(title="Only User Information", default=True)
     show_friends = BoolProperty(title="Include Friends List", default=False)
 

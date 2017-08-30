@@ -24,21 +24,21 @@ LIMIT_MSG = {
 
 
 LIMIT_MSGS = [
-{
-    'limit': {
-        'track': 1234
+    {
+        'limit': {
+            'track': 1234
+        }
+    },
+    {
+        'limit': {
+            'track': 1000
+        }
+    },
+    {
+        'limit': {
+            'track': 2000
+        }
     }
-},
-{
-    'limit': {
-        'track': 1000
-    }
-},
-{
-    'limit': {
-        'track': 2000
-    }
-}
 ]
 
 
@@ -149,11 +149,10 @@ class TestTwitter(NIOBlockTestCase):
     def test_params(self):
         self.configure_block(self._block, {
             'language': ['en', 'es'],
-            'locations': [{'southwest':
-                           {'latitude': -1.00, 'longitude': -2.00},
-                           'northeast':
-                           {'latitude': 1.00, 'longitude': 2.00}
-                          }]
+            'locations': [{
+                'southwest': {'latitude': -1.00, 'longitude': -2.00},
+                'northeast': {'latitude': 1.00, 'longitude': 2.00}
+            }]
         })
         self._block.start()
         params = self._block.get_params()

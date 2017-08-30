@@ -1,18 +1,141 @@
 {
   "nio/Twitter": {
-    "version": "0.0.1",
-    "description": "",
+    "version": "2.0.0",
+    "description": "Notifies signals from tweets returned by the [Twitter Public Stream API](https://dev.twitter.com/docs/api/1.1/post/statuses/filter).",
+    "properties": {
+      "creds": {
+        "title": "Credentials",
+        "type": "ObjectType",
+        "description": "Twitter API credentials.",
+        "default": {
+          "consumer_key": "[[TWITTER_API_KEY]]",
+          "oauth_token_secret": "[[TWITTER_ACCESS_TOKEN_SECRET]]",
+          "oauth_token": "[[TWITTER_ACCESS_TOKEN]]",
+          "app_secret": "[[TWITTER_API_SECRET]]"
+        }
+      },
+      "fields": {
+        "title": "Included Fields",
+        "type": "ListType",
+        "description": "Tweet fields to notify on the signal. If unspecified, all fields from tweets will be notified. List of fields [here](https://dev.twitter.com/docs/platform-objects/tweets).",
+        "default": []
+      },
+      "filter_level": {
+        "title": "Filter Level",
+        "type": "SelectType",
+        "description": "Minimum value of the filter_level Tweet attribute.",
+        "default": 0
+      },
+      "follow": {
+        "title": "Follow Users",
+        "type": "ListType",
+        "description": "The list of users to track.",
+        "default": []
+      },
+      "language": {
+        "title": "Language",
+        "type": "ListType",
+        "description": "Only get tweets of the specifed language.",
+        "default": [
+          "en"
+        ]
+      },
+      "locations": {
+        "title": "Locations",
+        "type": "ListType",
+        "description": "A comma-separated list of longitude, latitude pairs specifying a set of bounding boxes to filter Tweets by.",
+        "default": []
+      },
+      "notify_freq": {
+        "title": "Notification Frequency",
+        "type": "TimeDeltaType",
+        "description": "The interval between signal notifications.",
+        "default": {
+          "seconds": 2
+        }
+      },
+      "phrases": {
+        "title": "Query Phrases",
+        "type": "ListType",
+        "description": "List of phrases to match against tweets. The tweet's text, expanded_url, display_url and screen_name are checked for matches. Exact matching of phrases (i.e. quoted phrases) is not supported. Official documentation on phrase matching can be found [here](https://dev.twitter.com/docs/streaming-apis/parameters#track) and [here](https://dev.twitter.com/docs/streaming-apis/keyword-matching).",
+        "default": []
+      },
+      "rc_interval": {
+        "title": "Reconnect Interval",
+        "type": "TimeDeltaType",
+        "description": "How often to check that the stream is still alive.",
+        "default": {
+          "seconds": 90
+        }
+      }
+    },
     "inputs": {},
-    "outputs": {},
-    "properties": {},
+    "outputs": {
+      "limit": {
+        "description": "Notifies a signal for each [limit notice](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) recieved from Twitter."
+      },
+      "other": {
+        "description": "Notifies a signal for any [other message types](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) received from Twitter."
+      },
+      "tweets": {
+        "description": "Creates a new signal for each matching Tweet. Official documentation of fields of a tweet can be found [here](https://dev.twitter.com/docs/platform-objects/tweets)."
+      }
+    },
     "commands": {}
   },
   "nio/TwitterUserStream": {
-    "version": "0.0.1",
-    "description": "",
+    "version": "2.0.0",
+    "description": "Notifies signals from the [Twitter User Stream API](https://dev.twitter.com/streaming/userstreams).",
+    "properties": {
+      "creds": {
+        "title": "Credentials",
+        "type": "ObjectType",
+        "description": "Twitter API credentials.",
+        "default": {
+          "consumer_key": "[[TWITTER_API_KEY]]",
+          "oauth_token_secret": "[[TWITTER_ACCESS_TOKEN_SECRET]]",
+          "oauth_token": "[[TWITTER_ACCESS_TOKEN]]",
+          "app_secret": "[[TWITTER_API_SECRET]]"
+        }
+      },
+      "notify_freq": {
+        "title": "Notification Frequency",
+        "type": "TimeDeltaType",
+        "description": "The interval between signal notifications.",
+        "default": {
+          "seconds": 2
+        }
+      },
+      "only_user": {
+        "title": "Only User Information",
+        "type": "BoolType",
+        "description": "When True, only events about the authenticated user are included. When False, data about the user and about the user's following are included.",
+        "default": true
+      },
+      "rc_interval": {
+        "title": "Reconnect Interval",
+        "type": "TimeDeltaType",
+        "description": "How often to check that the stream is still alive.",
+        "default": {
+          "seconds": 90
+        }
+      },
+      "show_friends": {
+        "title": "Include Friends List",
+        "type": "BoolType",
+        "description": "Upon establishing a User Stream, Twitter will send a list of the user's friends. If True, include that an as output signal. The signal will contain a *friends* attribute that is a list of user ids.",
+        "default": false
+      }
+    },
     "inputs": {},
-    "outputs": {},
-    "properties": {},
+    "outputs": {
+      "events": {
+        "description": "Creates a new signal for each user streaming [message](https://dev.twitter.com/streaming/overview/messages-types)."
+      },
+      "other": {
+        "description": "Notifies a signal for any [other message types](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) received from Twitter."
+      }
+    },
     "commands": {}
   }
 }
