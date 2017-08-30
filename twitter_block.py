@@ -1,13 +1,14 @@
-from .twitter_stream_block import TwitterStreamBlock
-from nio.util.discovery import discoverable
+import requests
+from enum import Enum
+from requests_oauthlib import OAuth1
+
 from nio.signal.base import Signal
 from nio.block.terminals import output
 from nio.properties import ListProperty, SelectProperty,\
     ObjectProperty, PropertyHolder, FloatProperty, VersionProperty
 from nio.types.string import StringType
-from requests_oauthlib import OAuth1
-import requests
-from enum import Enum
+
+from .twitter_stream_block import TwitterStreamBlock
 
 
 PUB_STREAM_MSGS = {
@@ -60,7 +61,6 @@ class Location(PropertyHolder):
 @output("other")
 @output("limit")
 @output("tweets")
-@discoverable
 class Twitter(TwitterStreamBlock):
 
     """ A block for communicating with the Twitter Streaming API.
@@ -86,7 +86,7 @@ class Twitter(TwitterStreamBlock):
 
     """
 
-    version = VersionProperty(version='2.0.0', min_version='2.0.0')
+    version = VersionProperty('2.0.0')
     phrases = ListProperty(StringType, default=[], title='Query Phrases')
     follow = ListProperty(StringType, default=[], title='Follow Users')
     fields = ListProperty(StringType, default=[], title='Included Fields')
@@ -117,9 +117,7 @@ class Twitter(TwitterStreamBlock):
         # user ids can be grabbed 100 at a time.
         for i in range(0, len(self.follow()), 100):
             data = {"screen_name": ','.join(self.follow()[i:i+100])}
-            resp = requests.post(self.users_endpoint,
-                                data=data,
-                                auth=auth)
+            resp = requests.post(self.users_endpoint, data=data, auth=auth)
             if resp.status_code == 200:
                 for user in resp.json():
                     id = user.get('id_str')

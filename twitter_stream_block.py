@@ -1,20 +1,20 @@
 import http.client
 import json
 import time
+import requests
+import oauth2 as oauth
 from collections import defaultdict
 from datetime import timedelta, datetime
 from threading import Lock, Event
-import oauth2 as oauth
-import requests
+from requests_oauthlib import OAuth1
 
-from nio.block.base import Block
+from nio import GeneratorBlock
 from nio.modules.scheduler import Job
 from nio.properties import PropertyHolder, TimeDeltaProperty, \
     ObjectProperty, StringProperty
 from nio.signal.base import Signal
 from nio.util.discovery import not_discoverable
 from nio.util.threading.spawn import spawn
-from requests_oauthlib import OAuth1
 
 
 class TwitterCreds(PropertyHolder):
@@ -22,14 +22,18 @@ class TwitterCreds(PropertyHolder):
     """ Property holder for Twitter OAuth credentials.
 
     """
-    consumer_key = StringProperty(title='API Key', default="[[TWITTER_API_KEY]]")
-    app_secret = StringProperty(title='API Secret', default="[[TWITTER_API_SECRET]]")
-    oauth_token = StringProperty(title='Access Token', default="[[TWITTER_ACCESS_TOKEN]]")
-    oauth_token_secret = StringProperty(title='Access Token Secret', default="[[TWITTER_ACCESS_TOKEN_SECRET]]")
+    consumer_key = StringProperty(
+        title='API Key', default="[[TWITTER_API_KEY]]")
+    app_secret = StringProperty(
+        title='API Secret', default="[[TWITTER_API_SECRET]]")
+    oauth_token = StringProperty(
+        title='Access Token', default="[[TWITTER_ACCESS_TOKEN]]")
+    oauth_token_secret = StringProperty(
+        title='Access Token Secret', default="[[TWITTER_ACCESS_TOKEN_SECRET]]")
 
 
 @not_discoverable
-class TwitterStreamBlock(Block):
+class TwitterStreamBlock(GeneratorBlock):
 
     """ A parent block for communicating with the Twitter Streaming API.
 
@@ -251,8 +255,9 @@ class TwitterStreamBlock(Block):
         if self._monitor_job is not None:
             self._monitor_job.cancel()
 
-        self.logger.debug("Reconnecting in %d seconds" %
-                           self._rc_delay.total_seconds())
+        self.logger.debug(
+            "Reconnecting in {} seconds".format(self._rc_delay.total_seconds())
+        )
         self._rc_job = Job(self._run_stream,
                            self._rc_delay, False)
         self._rc_delay *= 2
@@ -348,5 +353,8 @@ class TwitterStreamBlock(Block):
             if resp.status_code != 200:
                 raise Exception("Status %s" % resp.status_code)
         except Exception:
-            self.logger.exception("Authentication Failed for consumer key: %s" %
-                                  self.creds().consumer_key())
+            self.logger.exception(
+                "Authentication Failed for consumer key: {}".format(
+                    self.creds().consumer_key()
+                )
+            )
