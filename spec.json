@@ -1,6 +1,6 @@
 {
   "nio/Twitter": {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Notifies signals from tweets returned by the [Twitter Public Stream API](https://dev.twitter.com/docs/api/1.1/post/statuses/filter).",
     "properties": {
       "creds": {
