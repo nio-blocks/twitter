@@ -84,7 +84,7 @@
     "commands": {}
   },
   "nio/TwitterUserStream": {
-    "version": "2.0.0",
+    "version": "1.0.0",
     "description": "Notifies signals from the [Twitter User Stream API](https://dev.twitter.com/streaming/userstreams).",
     "properties": {
       "creds": {

@@ -21,7 +21,7 @@ class TwitterUserStream(TwitterStreamBlock):
 
     """
 
-    version = VersionProperty('2.0.0')
+    version = VersionProperty("1.0.0")
     only_user = BoolProperty(title="Only User Information", default=True)
     show_friends = BoolProperty(title="Include Friends List", default=False)
 
