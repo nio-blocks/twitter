@@ -86,7 +86,7 @@ class Twitter(TwitterStreamBlock):
 
     """
 
-    version = VersionProperty('2.0.0')
+    version = VersionProperty("1.0.0")
     phrases = ListProperty(StringType, default=[], title='Query Phrases')
     follow = ListProperty(StringType, default=[], title='Follow Users')
     fields = ListProperty(StringType, default=[], title='Included Fields')
