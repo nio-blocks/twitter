@@ -2,6 +2,10 @@
   "nio/Twitter": {
     "version": "2.0.0",
     "description": "Notifies signals from tweets returned by the [Twitter Public Stream API](https://dev.twitter.com/docs/api/1.1/post/statuses/filter).",
+    "categories": [
+      "Social Media",
+      "Web Data"
+    ],
     "properties": {
       "creds": {
         "title": "Credentials",
@@ -86,6 +90,9 @@
   "nio/TwitterUserStream": {
     "version": "2.0.0",
     "description": "Notifies signals from the [Twitter User Stream API](https://dev.twitter.com/streaming/userstreams).",
+    "categories": [
+      "Social Media"
+    ],
     "properties": {
       "creds": {
         "title": "Credentials",
