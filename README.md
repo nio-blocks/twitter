@@ -1,6 +1,6 @@
 Twitter
 =======
-Notifies signals from tweets returned by the [Twitter Public Stream API](https://dev.twitter.com/docs/api/1.1/post/statuses/filter).
+Notifies signals from tweets returned by the [Twitter Public Stream API](https://developer.twitter.com/en/docs/tweets/filter-realtime/api-reference/post-statuses-filter.html).
 
 Properties
 ----------
@@ -22,7 +22,7 @@ Outputs
 -------
 - **limit**: Notifies a signal for each [limit notice](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) recieved from Twitter.
 - **other**: Notifies a signal for any [other message types](https://dev.twitter.com/streaming/overview/messages-types#limit_notices) received from Twitter.
-- **tweets**: Creates a new signal for each matching Tweet. Official documentation of fields of a tweet can be found [here](https://dev.twitter.com/docs/platform-objects/tweets).
+- **tweets**: Creates a new signal for each matching Tweet. Official documentation of fields of a tweet can be found [here](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object).
 
 Commands
 --------
